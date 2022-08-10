@@ -33,11 +33,10 @@ func Test_exceltesing_Load(t *testing.T) {
 		foundedYear int
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []company
-		wantErr bool
+		name   string
+		fields fields
+		args   args
+		want   []company
 	}{
 		{
 			name:   "inserted excel data",
@@ -51,7 +50,6 @@ func Test_exceltesing_Load(t *testing.T) {
 				{companyCD: "00001", companyName: "Future", foundedYear: 1989},
 				{companyCD: "00002", companyName: "YDC", foundedYear: 1972},
 			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -59,9 +57,8 @@ func Test_exceltesing_Load(t *testing.T) {
 			e := &exceltesing{
 				db: tt.fields.db,
 			}
-			if err := e.Load(tt.args.t, tt.args.r); (err != nil) != tt.wantErr {
-				t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
-			}
+
+			e.Load(tt.args.t, tt.args.r)
 
 			rows, err := conn.Query("SELECT company_cd, company_name, founded_year, created_at, updated_at, revision FROM company ORDER BY company_cd;")
 			if err != nil {
@@ -123,6 +120,7 @@ func execSQLFile(t *testing.T, db *sql.DB, filePath string) {
 	if err != nil {
 		t.Fatalf("failed to start transaction: %v", err)
 	}
+	defer tx.Rollback()
 
 	queries := strings.Split(string(b), ";")
 	for _, query := range queries {
@@ -132,11 +130,11 @@ func execSQLFile(t *testing.T, db *sql.DB, filePath string) {
 			continue
 		}
 		if _, err = tx.Exec(q); err != nil {
-			t.Errorf("failed to exec sql, query = %s: %v", q, err)
+			t.Fatalf("failed to exec sql, query = %s: %v", q, err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		t.Errorf("failed to commit: %v", err)
+		t.Fatalf("failed to commit: %v", err)
 	}
 }

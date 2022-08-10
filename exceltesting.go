@@ -23,18 +23,18 @@ type exceltesing struct {
 }
 
 // Load はExcelのBookを読み込み、データベースに事前データを投入します。
-func (e *exceltesing) Load(t *testing.T, r LoadRequest) error {
+func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 	t.Helper()
 	ctx := context.TODO()
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("exceltesing: start transaction: %w", err)
+		t.Fatalf("exceltesing: start transaction: %v", err)
 	}
 	defer tx.Rollback()
 
 	f, err := excelize.OpenFile(r.TargetBookPath)
 	if err != nil {
-		return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
+		t.Fatalf("exceltesing: excelize.OpenFile: %v", err)
 	}
 	defer f.Close()
 	for _, sheet := range f.GetSheetList() {
@@ -44,16 +44,18 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) error {
 		if strings.HasPrefix(sheet, r.SheetPrefix) {
 			table, err := e.loadExcelSheet(f, sheet)
 			if err != nil {
-				return fmt.Errorf("exceltesing: load excel sheet, sheet = %s: %w", sheet, err)
+				t.Fatalf("exceltesing: load excel sheet, sheet = %s: %v", sheet, err)
 			}
 
 			if err := e.insertData(table); err != nil {
-				return fmt.Errorf("exceltesing: insert data to %s: %w", table.name, err)
+				t.Fatalf("exceltesing: insert data to %s: %v", table.name, err)
 			}
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("exceltesing: commit: %v", err)
+	}
 }
 
 // Compare はExcelの期待結果と実際にデータベースに登録されているデータを比較して
