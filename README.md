@@ -13,3 +13,5 @@ GoでExcelを使ったテーブルドリブンテストを行うためのヘル�
 視認性に優れることから事前データや期待するデータはExcelを使います。
 
 ![](./image/overview.drawio.png)
+
+現在は PostgreSQL のみサポートしています。
