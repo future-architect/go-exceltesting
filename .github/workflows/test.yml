@@ -1,0 +1,52 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      # Ignore files that are not used in production
+      - "**.md"
+      - "LICENSE"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths-ignore:
+      # Ignore files that are not used in production
+      - "**.md"
+      - "LICENSE"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      localstack:
+        image: postgres:14.3
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_USER: excellocal
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: excellocal
+          TZ: Asia/Tokyo
+
+    steps:
+      - name: setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.x
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      # - name: Install GolangCI-Lint
+      #   run: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.48.0
+
+      # - name: Run GolangCI-Lint
+      #   run: ./bin/golangci-lint run --config .golangci.yml
+
+      - name: test
+        run: go test -v ./...
