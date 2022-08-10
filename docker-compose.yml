@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  postgres:
+    image: postgres:14.3
+    environment:
+      POSTGRES_USER: excellocal
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: excellocal
+      TZ: "Asia/Tokyo"
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: pg_isready -U excellocal -d excellocal
+      timeout: 45s
+      interval: 10s
+      retries: 10
