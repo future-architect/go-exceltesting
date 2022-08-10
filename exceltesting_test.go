@@ -6,6 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,8 +124,16 @@ func execSQLFile(t *testing.T, db *sql.DB, filePath string) {
 		t.Fatalf("failed to start transaction: %v", err)
 	}
 
-	if _, err = tx.Exec(string(b)); err != nil {
-		t.Errorf("failed to exec sql, query = %s: %v", string(b), err)
+	queries := strings.Split(string(b), ";")
+	for _, query := range queries {
+
+		q := strings.TrimSpace(query)
+		if q == "" {
+			continue
+		}
+		if _, err = tx.Exec(q); err != nil {
+			t.Errorf("failed to exec sql, query = %s: %v", q, err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

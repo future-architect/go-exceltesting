@@ -1,4 +1,4 @@
-DROP TABLE company;
+DROP TABLE IF EXISTS company;
 CREATE TABLE company (
   company_cd varchar(5) NOT NULL
   , company_name varchar(256) NOT NULL

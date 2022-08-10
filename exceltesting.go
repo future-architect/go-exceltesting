@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/exp/slices"
-	"log"
 	"strings"
 	"testing"
 )
@@ -140,7 +139,6 @@ func (e *exceltesing) insertData(t *table) error {
 	}
 
 	sql := t.buildInsertSQL()
-	log.Println(sql)
 	_, err := e.db.ExecContext(context.TODO(), sql)
 	return err
 }
