@@ -3,9 +3,12 @@ package exceltesting
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/exp/slices"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -66,7 +69,49 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) error {
 }
 
 // DumpCSV はExcelブックの全シートをCSVにDumpします。
+//
+// DumpRequest.TargetBookPaths で指定されたパスに csv ディレクトリを作成し、
+// csvディレクトリにDumpしたCSVファイルを作成します。
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) error {
+	for _, path := range r.TargetBookPaths {
+		ef, err := excelize.OpenFile(path)
+		if err != nil {
+			return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
+		}
+		defer ef.Close()
+		for _, sheet := range ef.GetSheetList() {
+			rows, err := ef.Rows(sheet)
+			if err != nil {
+				return fmt.Errorf("exceltesing: get rows: %w", err)
+			}
+			outDir := filepath.Join(filepath.Dir(path), "csv")
+			if _, err := os.Stat(outDir); os.IsNotExist(err) {
+				if err := os.Mkdir(outDir, 0755); err != nil {
+					return fmt.Errorf("exceltesing: create directory: %w", err)
+				}
+			}
+
+			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
+
+			f, err := os.Create(filepath.Join(outDir, outFileName))
+			if err != nil {
+				return fmt.Errorf("exceltesing: create file: %w", err)
+			}
+			defer f.Close()
+
+			writer := csv.NewWriter(f)
+			defer writer.Flush()
+			for rows.Next() {
+				cols, err := rows.Columns()
+				if err != nil {
+					return fmt.Errorf("exceltesing: rows.Columns: %w", err)
+				}
+				if err := writer.Write(cols); err != nil {
+					return fmt.Errorf("exceltesing: writer.Write(): %w", err)
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -95,7 +140,7 @@ type CompareRequest struct {
 // DumpRequest はExcelをCSVにDumpするための設定です。
 type DumpRequest struct {
 	// dump対象Excelパス
-	TargetBookPath string
+	TargetBookPaths []string
 }
 
 func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*table, error) {
@@ -183,4 +228,10 @@ func getExcelData(rows [][]string, rowNum int) ([][]string, error) {
 		data = append(data, row[1:len(columns)+1])
 	}
 	return data, nil
+}
+
+func getFileNameWithoutExt(path string) string {
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	return base[0 : len(base)-len(ext)]
 }

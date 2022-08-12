@@ -2,15 +2,16 @@ package exceltesting
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
+	_ "github.com/jackc/pgx/v4/stdlib"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func Test_exceltesing_Load(t *testing.T) {
@@ -136,5 +137,57 @@ func execSQLFile(t *testing.T, db *sql.DB, filePath string) {
 
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("failed to commit: %v", err)
+	}
+}
+
+func Test_exceltesing_DumpCSV(t *testing.T) {
+	type args struct {
+		t *testing.T
+		r DumpRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr any
+	}{
+		{
+			name:    "dumped",
+			args:    args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
+			want:    filepath.Join("testdata", "want_dump_会社.csv"),
+			wantErr: nil,
+		},
+		{
+			name:    "input file not found",
+			args:    args{r: DumpRequest{TargetBookPaths: []string{"not_found"}}},
+			wantErr: &fs.PathError{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &exceltesing{nil}
+			if err := e.DumpCSV(t, tt.args.r); err != nil {
+				if !errors.As(err, &tt.wantErr) {
+					t.Errorf("DumpCSV() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				return
+			}
+
+			got := filepath.Join("testdata", "csv", "dump_会社.csv")
+
+			b1, err := os.ReadFile(tt.want)
+			if err != nil {
+				t.Errorf("read file: %v", tt.want)
+				return
+			}
+			b2, err := os.ReadFile(got)
+			if err != nil {
+				t.Errorf("read file: %v", got)
+				return
+			}
+			if diff := cmp.Diff(b1, b2); diff != "" {
+				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, got, diff)
+			}
+		})
 	}
 }
