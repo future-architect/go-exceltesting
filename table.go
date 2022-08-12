@@ -50,3 +50,23 @@ func (t *table) buildInsertSQL() string {
 func (t *table) sqlColumnExp() string {
 	return strings.Join(t.columns, ",")
 }
+
+// DeepCopy generates a deep copy of table
+func (t table) DeepCopy() table {
+	var cp table = t
+	if t.columns != nil {
+		cp.columns = make([]string, len(t.columns))
+		copy(cp.columns, t.columns)
+	}
+	if t.data != nil {
+		cp.data = make([][]string, len(t.data))
+		copy(cp.data, t.data)
+		for i2 := range t.data {
+			if t.data[i2] != nil {
+				cp.data[i2] = make([]string, len(t.data[i2]))
+				copy(cp.data[i2], t.data[i2])
+			}
+		}
+	}
+	return cp
+}
