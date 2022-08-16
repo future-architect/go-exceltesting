@@ -3,14 +3,18 @@ package exceltesting
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/exp/slices"
-	"math/big"
-	"strings"
-	"testing"
 )
 
 const (
@@ -122,8 +126,55 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 }
 
 // DumpCSV はExcelブックの全シートをCSVにDumpします。
-func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) error {
-	return nil
+//
+// DumpRequest.TargetBookPaths で指定されたパスに csv ディレクトリを作成し、
+// csvディレクトリにDumpしたCSVファイルを作成します。
+func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	for _, path := range r.TargetBookPaths {
+		ef, err := excelize.OpenFile(path)
+		if err != nil {
+			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
+			return
+		}
+		defer ef.Close()
+		for _, sheet := range ef.GetSheetList() {
+			rows, err := ef.Rows(sheet)
+			if err != nil {
+				t.Errorf("exceltesing: get rows: %v", err)
+				return
+			}
+			outDir := filepath.Join(filepath.Dir(path), "csv")
+			if _, err := os.Stat(outDir); os.IsNotExist(err) {
+				if err := os.Mkdir(outDir, 0755); err != nil {
+					t.Errorf("exceltesing: create directory: %v", err)
+					return
+				}
+			}
+
+			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
+
+			f, err := os.Create(filepath.Join(outDir, outFileName))
+			if err != nil {
+				t.Errorf("exceltesing: create file: %v", err)
+				return
+			}
+			defer f.Close()
+
+			writer := csv.NewWriter(f)
+			defer writer.Flush()
+			for rows.Next() {
+				cols, err := rows.Columns()
+				if err != nil {
+					t.Errorf("exceltesing: rows.Columns: %v", err)
+					return
+				}
+				if err := writer.Write(cols); err != nil {
+					t.Errorf("exceltesing: writer.Write(): %v", err)
+					return
+				}
+			}
+		}
+	}
 }
 
 // LoadRequest はExcelからデータを投入するための設定です。
@@ -151,7 +202,7 @@ type CompareRequest struct {
 // DumpRequest はExcelをCSVにDumpするための設定です。
 type DumpRequest struct {
 	// dump対象Excelパス
-	TargetBookPath string
+	TargetBookPaths []string
 }
 
 func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*table, error) {
@@ -333,6 +384,12 @@ func getExcelData(rows [][]string, rowNum int) ([][]string, error) {
 		data = append(data, row[1:len(columns)+1])
 	}
 	return data, nil
+}
+
+func getFileNameWithoutExt(path string) string {
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	return base[0 : len(base)-len(ext)]
 }
 
 // x はDBの値にカラムを付与した構造体です。
