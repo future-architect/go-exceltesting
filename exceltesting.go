@@ -5,12 +5,20 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/xuri/excelize/v2"
-	"golang.org/x/exp/slices"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/xuri/excelize/v2"
+	"golang.org/x/exp/slices"
+)
+
+const (
+	tempTablePrefix = "temp_"
 )
 
 // New はExcelからテストデータを投入できる構造体のファクトリ関数です
@@ -64,8 +72,57 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 // Compare はExcelの期待結果と実際にデータベースに登録されているデータを比較して
 // 差分がある場合は報告します。
 // 値の比較は go-cmp (https://github.com/google/go-cmp) を利用しています。
-func (e *exceltesing) Compare(t *testing.T, r CompareRequest) error {
-	return nil
+func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
+	t.Helper()
+
+	tx, err := e.db.Begin()
+	if err != nil {
+		t.Errorf("exceltesting: failed to start transaction: %v", err)
+		return false
+	}
+	defer tx.Rollback()
+
+	f, err := excelize.OpenFile(r.TargetBookPath)
+	if err != nil {
+		t.Errorf("exceltesting: failed to open excel file: %v", err)
+		return false
+	}
+	defer f.Close()
+
+	equal := true
+	for _, sheet := range f.GetSheetList() {
+		if slices.Contains(r.IgnoreSheet, sheet) {
+			continue
+		}
+		if strings.HasPrefix(sheet, r.SheetPrefix) {
+			table, err := e.loadExcelSheet(f, sheet)
+			if err != nil {
+				t.Errorf("exceltesting: failed to load excel sheet, sheet = %s: %v", sheet, err)
+				equal = false
+				continue
+			}
+			got, want, err := e.comparativeSource(table, &r)
+			if err != nil {
+				t.Errorf("exceltesting: failed to fetch comparative source: %v", err)
+				equal = false
+				continue
+			}
+
+			opts := []cmp.Option{
+				cmpopts.EquateNaNs(),
+				cmp.Comparer(func(x, y *big.Int) bool {
+					return x.Cmp(y) == 0
+				}),
+				cmp.AllowUnexported(x{}),
+			}
+			if diff := cmp.Diff(want, got, opts...); diff != "" {
+				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
+				equal = false
+				continue
+			}
+		}
+	}
+	return equal
 }
 
 // DumpCSV はExcelブックの全シートをCSVにDumpします。
@@ -176,6 +233,48 @@ func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*tab
 	}, nil
 }
 
+// comparativeSource はデータベースに格納されている実際のテーブルの値と、Excelから取得した期待する結果の値を
+// 比較可能な値として取得します。
+func (e *exceltesing) comparativeSource(t *table, req *CompareRequest) ([][]x, [][]x, error) {
+	var pk string
+	err := e.db.QueryRow(getPrimaryKeyQuery, t.name).Scan(&pk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	q1, cs, err := e.buildComparingQuery(t, pk, req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	got, err := e.getComparingData(q1, len(cs))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := e.createTempTable(t.name); err != nil {
+		return nil, nil, fmt.Errorf("create temporary table: %w", err)
+	}
+
+	c := t.DeepCopy()
+	c.name = tempTablePrefix + c.name
+	if err := e.insertData(&c); err != nil {
+		return nil, nil, fmt.Errorf("insert data to %s: %w", c.name, err)
+	}
+
+	q2, _, err := e.buildComparingQuery(&c, pk, req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	want, err := e.getComparingData(q2, len(cs))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return convert(got, cs), convert(want, cs), nil
+}
+
 func (e *exceltesing) insertData(t *table) error {
 	if _, err := e.db.ExecContext(context.TODO(), fmt.Sprintf(`TRUNCATE TABLE %s;`, t.name)); err != nil {
 		return fmt.Errorf("truncate table %s: %w", t.name, err)
@@ -188,6 +287,58 @@ func (e *exceltesing) insertData(t *table) error {
 	sql := t.buildInsertSQL()
 	_, err := e.db.ExecContext(context.TODO(), sql)
 	return err
+}
+
+func (e *exceltesing) createTempTable(tableName string) error {
+	query := fmt.Sprintf("CREATE TEMP TABLE IF NOT EXISTS %s AS SELECT * FROM %s WHERE 0 = 1;", tempTablePrefix+tableName, tableName)
+	_, err := e.db.Exec(query)
+	return err
+}
+
+func (e *exceltesing) buildComparingQuery(t *table, primaryKey string, req *CompareRequest) (string, []string, error) {
+	columns := make([]string, 0, len(t.columns))
+	for _, c := range t.columns {
+		if slices.Contains(req.IgnoreColumns, c) {
+			continue
+		}
+		columns = append(columns, c)
+	}
+
+	var sql string
+	sql += "SELECT "
+	for i, column := range columns {
+		if i > 0 {
+			sql += ", "
+		}
+		sql += column
+	}
+	sql += fmt.Sprintf(" FROM %s ORDER BY %s;", t.name, primaryKey)
+	return sql, columns, nil
+}
+
+func (e *exceltesing) getComparingData(q string, len int) ([][]any, error) {
+	var got [][]any
+
+	rows, err := e.db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		g := make([]any, len)
+		for i := range g {
+			g[i] = &g[i]
+		}
+		if err := rows.Scan(g...); err != nil {
+			return nil, err
+		}
+		got = append(got, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return got, nil
 }
 
 func getExcelColumns(rows [][]string, rowNum int) []string {
@@ -234,4 +385,24 @@ func getFileNameWithoutExt(path string) string {
 	base := filepath.Base(path)
 	ext := filepath.Ext(base)
 	return base[0 : len(base)-len(ext)]
+}
+
+// x はDBの値にカラムを付与した構造体です。
+// go-cmp で結果と期待値を比較するときに、値に差分があったときにカラムも表示するために column を付与しています。
+type x struct {
+	column any
+	value  any
+}
+
+func convert(vs [][]any, columns []string) [][]x {
+	resp := make([][]x, len(vs))
+	for i, r := range vs {
+		for j, v := range r {
+			resp[i] = append(resp[i], x{
+				column: columns[j],
+				value:  v,
+			})
+		}
+	}
+	return resp
 }
