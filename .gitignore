@@ -19,3 +19,6 @@
 
 # Excel temp files
 **/~$*xlsx
+
+# test file
+testdata/csv/*.csv

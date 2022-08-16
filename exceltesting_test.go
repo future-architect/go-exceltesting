@@ -2,9 +2,7 @@ package exceltesting
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -250,32 +248,20 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		r DumpRequest
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr any
+		name string
+		args args
+		want string
 	}{
 		{
-			name:    "dumped",
-			args:    args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
-			want:    filepath.Join("testdata", "want_dump_会社.csv"),
-			wantErr: nil,
-		},
-		{
-			name:    "input file not found",
-			args:    args{r: DumpRequest{TargetBookPaths: []string{"not_found"}}},
-			wantErr: &fs.PathError{},
+			name: "dumped",
+			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
+			want: filepath.Join("testdata", "want_dump_会社.csv"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
-			if err := e.DumpCSV(t, tt.args.r); err != nil {
-				if !errors.As(err, &tt.wantErr) {
-					t.Errorf("DumpCSV() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				return
-			}
+			e.DumpCSV(t, tt.args.r)
 
 			got := filepath.Join("testdata", "csv", "dump_会社.csv")
 
