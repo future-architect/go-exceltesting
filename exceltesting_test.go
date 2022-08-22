@@ -16,13 +16,10 @@ import (
 func Test_exceltesing_Load(t *testing.T) {
 
 	conn := openTestDB(t)
-	defer conn.Close()
+	t.Cleanup(func() { conn.Close() })
 
-	execSQLFile(t, conn, filepath.Join("testdata", "ddl.sql"))
+	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
-	type fields struct {
-		db *sql.DB
-	}
 	type args struct {
 		t *testing.T
 		r LoadRequest
@@ -33,14 +30,12 @@ func Test_exceltesing_Load(t *testing.T) {
 		foundedYear int
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   []company
+		name string
+		args args
+		want []company
 	}{
 		{
-			name:   "inserted excel data",
-			fields: fields{db: conn},
+			name: "inserted excel data",
 			args: args{t, LoadRequest{
 				TargetBookPath: filepath.Join("testdata", "load.xlsx"),
 				SheetPrefix:    "",
@@ -54,9 +49,7 @@ func Test_exceltesing_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &exceltesing{
-				db: tt.fields.db,
-			}
+			e := &exceltesing{db: conn}
 
 			e.Load(tt.args.t, tt.args.r)
 
@@ -91,7 +84,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 	conn := openTestDB(t)
 	defer conn.Close()
 
-	execSQLFile(t, conn, filepath.Join("testdata", "ddl.sql"))
+	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
 	// Even if there is a difference in Compare(), t.Errorf() prevents the test from failing.
 	mockT := new(testing.T)
