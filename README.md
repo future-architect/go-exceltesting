@@ -1,8 +1,9 @@
 # go-exceltesting
 
-[![GoDev](https://img.shields.io/static/v1?label=godev&message=reference&color=00add8)][godoc]
+[![GoDev](https://img.shields.io/static/v1?label=godev&message=reference&color=00add8)][godoc] [![test](https://github.com/future-architect/go-exceltesting/actions/workflows/test.yml/badge.svg)][test]
 
 [godoc]: https://pkg.go.dev/github.com/future-architect/go-exceltesting
+[test]: https://github.com/future-architect/go-exceltesting/actions/workflows/test.yml
 
 GoでExcelを使ったテーブルドリブンテストを行うためのヘルパーライブラリです。
 
