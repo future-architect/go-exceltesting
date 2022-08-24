@@ -15,3 +15,5 @@ services:
       timeout: 45s
       interval: 10s
       retries: 10
+    volumes:
+      - ./testdata/schema:/docker-entrypoint-initdb.d
