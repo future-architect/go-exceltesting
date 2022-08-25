@@ -257,14 +257,12 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
 			want: filepath.Join("testdata", "want_dump_会社.csv"),
 		},
-
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
-			got := filepath.Join("testdata", "csv", "dump_会社.csv")			
+			got := filepath.Join("testdata", "csv", "dump_会社.csv")
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)

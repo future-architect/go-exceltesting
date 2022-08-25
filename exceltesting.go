@@ -139,13 +139,6 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 		defer ef.Close()
 		for _, sheet := range ef.GetSheetList() {
 			rows, err := ef.Rows(sheet)
-			rowTot := 0
-			rr, err := ef.GetRows(sheet)
-			for range rr {
-				rowTot++
-			}
-			
-
 			if err != nil {
 				t.Errorf("exceltesing: get rows: %v", err)
 				return
@@ -157,7 +150,6 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 					return
 				}
 			}
-			
 
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
 
