@@ -259,27 +259,21 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		},
 
 		{
-			name: "dumpedNew",
-			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpNew.xlsx")}}},
-			want: filepath.Join("testdata", "want_dumpNew_会社.csv"),
+			name: "dumpedWithEmptyFile",
+			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpWithEmptyFile.xlsx")}}},
+			want: filepath.Join("testdata", "want_dumpWithEmptyFile_会社.csv"),
 		},
 	}
 
-	const cornerCaseName = "dumpedNew"
-
 	for _, tt := range tests {
-		cornerFlag := 0
-		if tt.name != cornerCaseName {
-			cornerFlag ^= 1
-		}
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
 			got := ""
-			if cornerFlag == 1 {
+			if tt.name == "dumped" {
 				got = filepath.Join("testdata", "csv", "dump_会社.csv")
 			} else {
-				got = filepath.Join("testdata", "csv", "dumpNew_会社.csv")
+				got = filepath.Join("testdata", "csv", "dumpwithEmptyFile_会社.csv")
 			}
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
