@@ -258,29 +258,29 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 			want: filepath.Join("testdata", "want_dump_会社.csv"),
 		},
 
-		// {
-		// 	name: "dumpedNew",
-		// 	args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpNew.xlsx")}}},
-		// 	want: filepath.Join("testdata", "want_dumpNew_会社.csv"),
-		// },
+		{
+			name: "dumpedNew",
+			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpNew.xlsx")}}},
+			want: filepath.Join("testdata", "want_dumpNew_会社.csv"),
+		},
 	}
 
-	// const cornerCaseName = "dumpedNew"
-	// const skipReason = "This is not a series of  #7 cases"
-	// cornerFlag := 0
+	const cornerCaseName = "dumpedNew"
 
 	for _, tt := range tests {
-		// if tt.name != cornerCaseName {
-		// 	fmt.Println("####################")
-		// 	// cornerFlag ^= 1//usualcase -> cornercase -> usualcase -> cornercase -> ... としたい
-		// 	// t.Skip(skipReason)
-		// }
+		cornerFlag := 0
+		if tt.name != cornerCaseName {
+			cornerFlag ^= 1
+		}
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
-
-			got := filepath.Join("testdata", "csv", "dump_会社.csv")
-
+			got := ""
+			if cornerFlag == 1 {
+				got = filepath.Join("testdata", "csv", "dump_会社.csv")
+			} else {
+				got = filepath.Join("testdata", "csv", "dumpNew_会社.csv")
+			}
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)
