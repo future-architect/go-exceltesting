@@ -162,16 +162,28 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 
 			writer := csv.NewWriter(f)
 			defer writer.Flush()
+
+			rowCnt := 0
 			for rows.Next() {
 				cols, err := rows.Columns()
 				if err != nil {
 					t.Errorf("exceltesing: rows.Columns: %v", err)
 					return
 				}
+
+				if 3 <= rowCnt && rowCnt <= 6 {
+					rowCnt++
+					continue
+				}
+				if rowCnt >= 7 {
+					cols = cols[1:]
+				}
+
 				if err := writer.Write(cols); err != nil {
 					t.Errorf("exceltesing: writer.Write(): %v", err)
 					return
 				}
+				rowCnt++
 			}
 		}
 	}

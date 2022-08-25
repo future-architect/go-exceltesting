@@ -255,9 +255,7 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
-
 			got := filepath.Join("testdata", "csv", "dump_会社.csv")
-
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)
