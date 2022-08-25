@@ -130,6 +130,7 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 // DumpRequest.TargetBookPaths で指定されたパスに csv ディレクトリを作成し、
 // csvディレクトリにDumpしたCSVファイルを作成します。
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	// fmt.Println("debug")
 	for _, path := range r.TargetBookPaths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
@@ -150,8 +151,10 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 					return
 				}
 			}
-
+			//outFileName = dump_会社_csv
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
+			// fmt.Println(outFileName)
+			// fmt.Println("###########################")
 
 			f, err := os.Create(filepath.Join(outDir, outFileName))
 			if err != nil {
@@ -162,16 +165,40 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 
 			writer := csv.NewWriter(f)
 			defer writer.Flush()
+
+			// dumpedNew Case
+			//ここ動かすとuint何も書きこまれなくなる
+			// rowTot := len(rows)
+			// for rows.Next() {
+			// 	rowTot++
+			// }
+			// fmt.Println(rowTot)
+
+			// if rowTot == 8 { //#7 コーナーケース
+			// 	return
+			// }
+
+			rowCnt := 0
 			for rows.Next() {
 				cols, err := rows.Columns()
 				if err != nil {
 					t.Errorf("exceltesing: rows.Columns: %v", err)
 					return
 				}
+
+				if 3 <= rowCnt && rowCnt <= 6 {
+					rowCnt++
+					continue
+				}
+				if rowCnt >= 7 {
+					cols = cols[1:]
+				}
+
 				if err := writer.Write(cols); err != nil {
 					t.Errorf("exceltesing: writer.Write(): %v", err)
 					return
 				}
+				rowCnt++
 			}
 		}
 	}
