@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/xuri/excelize/v2"
 )
 
 func Test_exceltesing_Load(t *testing.T) {
@@ -251,6 +252,7 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		name string
 		args args
 		want string
+		got  string
 	}{
 		{
 			name: "dumped",
@@ -268,25 +270,33 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
-			e.DumpCSV(t, tt.args.r)
-			got := ""
-			if tt.name == "dumped" {
-				got = filepath.Join("testdata", "csv", "dump_会社.csv")
-			} else {
-				got = filepath.Join("testdata", "csv", "dumpwithEmptyFile_会社.csv")
+			for _, targetPath := range tt.args.r.TargetBookPaths {
+				ef, err := excelize.OpenFile(targetPath)
+				if err != nil {
+					t.Errorf("exceltesing: excelize.OpenFile: %v", err)
+					return
+				}
+				defer ef.Close()
+
+				for _, sheet := range ef.GetSheetList() {
+					outDir := filepath.Join(filepath.Dir(targetPath), "csv")
+					outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(targetPath), sheet)
+					tt.got = filepath.Join(outDir, outFileName)
+				}
 			}
+			e.DumpCSV(t, tt.args.r)
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)
 				return
 			}
-			b2, err := os.ReadFile(got)
+			b2, err := os.ReadFile(tt.got)
 			if err != nil {
-				t.Errorf("read file: %v", got)
+				t.Errorf("read file: %v", tt.got)
 				return
 			}
 			if diff := cmp.Diff(b1, b2); diff != "" {
-				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, got, diff)
+				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, tt.got, diff)
 			}
 		})
 	}

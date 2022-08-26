@@ -156,7 +156,6 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 			}
 
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
-
 			f, err := os.Create(filepath.Join(outDir, outFileName))
 			if err != nil {
 				t.Errorf("exceltesing: create file: %v", err)
