@@ -140,7 +140,11 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 		defer ef.Close()
 		for _, sheet := range ef.GetSheetList() {
 			rows, err := ef.Rows(sheet)
-			rr, _ := ef.GetRows(sheet)
+			if err != nil {
+				t.Errorf("exceltesing: rows: %v", err)
+				return
+			}
+			rr, err := ef.GetRows(sheet)
 			if err != nil {
 				t.Errorf("exceltesing: get rows: %v", err)
 				return
