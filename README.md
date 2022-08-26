@@ -1,8 +1,9 @@
 # go-exceltesting
 
-[![GoDev](https://img.shields.io/static/v1?label=godev&message=reference&color=00add8)][godoc]
+[![GoDev](https://img.shields.io/static/v1?label=godev&message=reference&color=00add8)][godoc] [![test](https://github.com/future-architect/go-exceltesting/actions/workflows/test.yml/badge.svg)][test]
 
 [godoc]: https://pkg.go.dev/github.com/future-architect/go-exceltesting
+[test]: https://github.com/future-architect/go-exceltesting/actions/workflows/test.yml
 
 GoでExcelを使ったテーブルドリブンテストを行うためのヘルパーライブラリです。
 
@@ -12,6 +13,11 @@ GoでExcelを使ったテーブルドリブンテストを行うためのヘル�
 `go-exceltesting` ではこうしたデータベースへの事前データの投入や、実際の更新結果と期待結果の比較をより効率的に行うためのAPIを提供します。
 視認性に優れることから事前データや期待するデータはExcelを使います。
 
-![](./image/overview.drawio.png)
+![](./doc/image/overview.drawio.png)
 
 現在は PostgreSQL のみサポートしています。
+
+## 使い方
+
+* [データの投入方法](./doc/insert.md)
+* [DBの値と比較する方法](./doc/compare.md)

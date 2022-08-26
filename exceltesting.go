@@ -131,7 +131,8 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 // csvディレクトリにDumpしたCSVファイルを作成します。
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 	const columnsRowNum = 9
-	for _, path := range r.TargetBookPaths {
+
+  for _, path := range r.TargetBookPaths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
 			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
