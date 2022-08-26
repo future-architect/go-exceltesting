@@ -244,30 +244,44 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		name string
 		args args
 		want string
+		got  string
 	}{
 		{
 			name: "dumped",
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
 			want: filepath.Join("testdata", "want_dump_会社.csv"),
+			got:  filepath.Join("testdata", "csv", "dump_会社.csv"),
+		},
+
+		{
+			name: "dumpedWithEmptyFile",
+			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpWithEmptyFile.xlsx")}}},
+			want: filepath.Join("testdata", "want_dumpWithEmptyFile_会社.csv"),
+			got:  filepath.Join("testdata", "csv", "dumpWithEmptyFile_Sheet1.csv"),
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
-			got := filepath.Join("testdata", "csv", "dump_会社.csv")
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)
 				return
 			}
-			b2, err := os.ReadFile(got)
+			_, err = os.Stat(tt.got)
+			if os.IsNotExist(err) {
+				t.Logf("%v is not found, because it is empty.\n",filepath.Base(tt.got))
+				return
+			}
+			b2, err := os.ReadFile(tt.got)
 			if err != nil {
-				t.Errorf("read file: %v", got)
+				t.Errorf("read file: %v", tt.got)
 				return
 			}
 			if diff := cmp.Diff(b1, b2); diff != "" {
-				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, got, diff)
+				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, tt.got, diff)
 			}
 		})
 	}
