@@ -165,7 +165,6 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 			}
 			defer f.Close()
 
-
 			writer := csv.NewWriter(f)
 			defer writer.Flush()
 
