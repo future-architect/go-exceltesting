@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/xuri/excelize/v2"
 )
 
 func Test_exceltesing_Load(t *testing.T) {
@@ -258,36 +257,29 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 			name: "dumped",
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
 			want: filepath.Join("testdata", "want_dump_会社.csv"),
+			got:  filepath.Join("testdata", "csv", "dump_会社.csv"),
 		},
 
 		{
 			name: "dumpedWithEmptyFile",
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpWithEmptyFile.xlsx")}}},
 			want: filepath.Join("testdata", "want_dumpWithEmptyFile_会社.csv"),
+			got:  filepath.Join("testdata", "csv", "dumpWithEmptyFile_Sheet1.csv"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
-			for _, targetPath := range tt.args.r.TargetBookPaths {
-				ef, err := excelize.OpenFile(targetPath)
-				if err != nil {
-					t.Errorf("exceltesing: excelize.OpenFile: %v", err)
-					return
-				}
-				defer ef.Close()
-
-				for _, sheet := range ef.GetSheetList() {
-					outDir := filepath.Join(filepath.Dir(targetPath), "csv")
-					outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(targetPath), sheet)
-					tt.got = filepath.Join(outDir, outFileName)
-				}
-			}
 			e.DumpCSV(t, tt.args.r)
 			b1, err := os.ReadFile(tt.want)
 			if err != nil {
 				t.Errorf("read file: %v", tt.want)
+				return
+			}
+			_, EMPTY := os.Stat(tt.got)
+			if os.IsNotExist(EMPTY) {
+				fmt.Printf("%v is not found, because it is empty!\n",filepath.Base(tt.got))
 				return
 			}
 			b2, err := os.ReadFile(tt.got)
@@ -301,3 +293,7 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		})
 	}
 }
+
+
+
+

@@ -130,6 +130,7 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 // DumpRequest.TargetBookPaths で指定されたパスに csv ディレクトリを作成し、
 // csvディレクトリにDumpしたCSVファイルを作成します。
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	const columnsRowNum = 9
 	for _, path := range r.TargetBookPaths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
@@ -140,9 +141,6 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 		for _, sheet := range ef.GetSheetList() {
 			rows, err := ef.Rows(sheet)
 			rr, _ := ef.GetRows(sheet)
-			if len(rr) == 9 {
-				return
-			}
 			if err != nil {
 				t.Errorf("exceltesing: get rows: %v", err)
 				return
@@ -155,6 +153,10 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 				}
 			}
 
+			if len(rr) == columnsRowNum {
+				return
+			}
+
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
 			f, err := os.Create(filepath.Join(outDir, outFileName))
 			if err != nil {
@@ -162,6 +164,7 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 				return
 			}
 			defer f.Close()
+
 
 			writer := csv.NewWriter(f)
 			defer writer.Flush()
