@@ -3,19 +3,20 @@ package exceltesting
 import (
 	"fmt"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
-const (
-	Char   = "C"
-	Number = "N"
-)
+// functionNames はDBMSの関数名の一覧です
+var functionNames = []string{
+	"current_timestamp",
+}
 
 // table は投入対象のテーブルです
 type table struct {
-	name        string
-	columnsType []string
-	columns     []string
-	data        [][]string
+	name    string
+	columns []string
+	data    [][]string
 }
 
 // buildSQL はINSERTステートメントを作成します
@@ -29,7 +30,7 @@ func (t *table) buildInsertSQL() string {
 			}
 			if cell == "" {
 				rowSQLExp += "null"
-			} else if t.columnsType[i] == Number {
+			} else if slices.Contains(functionNames, cell) {
 				rowSQLExp += cell
 			} else {
 				rowSQLExp += fmt.Sprintf("'%s'", cell)
