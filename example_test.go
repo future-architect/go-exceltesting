@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestExample_Load(t *testing.T) {
+	if _, err := conn.Exec("TRUNCATE company;"); err != nil {
+		t.Fatal(err)
+	}
+
 	e := exceltesting.New(conn)
 
 	e.Load(t, exceltesting.LoadRequest{
@@ -36,6 +40,10 @@ func TestExample_Load(t *testing.T) {
 }
 
 func TestExample_LoadRawFromCSV(t *testing.T) {
+	if _, err := conn.Exec("TRUNCATE company;"); err != nil {
+		t.Fatal(err)
+	}
+
 	f, err := os.Open(filepath.Join("testdata", "sample.csv"))
 	if err != nil {
 		t.Fatal(err)
