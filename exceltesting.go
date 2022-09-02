@@ -132,7 +132,7 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 	const columnsRowNum = 9
 
-  for _, path := range r.TargetBookPaths {
+	for _, path := range r.TargetBookPaths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
 			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
@@ -227,7 +227,6 @@ type DumpRequest struct {
 
 func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*table, error) {
 	const tableNmCell = "A2"
-	const columnTypeDefineRowNum = 6
 	const columnDefineRowNum = 9
 
 	tableNm, err := f.GetCellValue(targetSheet, tableNmCell)
@@ -243,7 +242,6 @@ func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*tab
 		return nil, fmt.Errorf("get row: %w", err)
 	}
 
-	columnsType := getExcelColumns(rows, columnTypeDefineRowNum)
 	columns := getExcelColumns(rows, columnDefineRowNum)
 	data, err := getExcelData(rows, columnDefineRowNum)
 	if err != nil {
@@ -251,10 +249,9 @@ func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*tab
 	}
 
 	return &table{
-		name:        tableNm,
-		columnsType: columnsType,
-		columns:     columns,
-		data:        data,
+		name:    tableNm,
+		columns: columns,
+		data:    data,
 	}, nil
 }
 

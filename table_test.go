@@ -17,21 +17,19 @@ func Test_table_buildInsertSQL(t1 *testing.T) {
 		{
 			name: "build INSERT statement",
 			fields: fields{
-				name:        "company",
-				columnsType: []string{"C", "C", "N"},
-				columns:     []string{"company_cd", "company_name", "founded_year"},
-				data:        [][]string{{"0001", "Future", "1989"}, {"0002", "YDC", "1972"}},
+				name:    "company",
+				columns: []string{"company_cd", "company_name", "founded_year", "created_at"},
+				data:    [][]string{{"0001", "Future", "1989", "current_timestamp"}, {"0002", "YDC", "1972", "current_timestamp"}},
 			},
-			want: "INSERT INTO company (company_cd,company_name,founded_year) VALUES('0001', 'Future', 1989),('0002', 'YDC', 1972);\n",
+			want: "INSERT INTO company (company_cd,company_name,founded_year,created_at) VALUES('0001', 'Future', '1989', current_timestamp),('0002', 'YDC', '1972', current_timestamp);\n",
 		},
 	}
 	for _, tt := range tests {
 		t1.Run(tt.name, func(t1 *testing.T) {
 			t := &table{
-				name:        tt.fields.name,
-				columnsType: tt.fields.columnsType,
-				columns:     tt.fields.columns,
-				data:        tt.fields.data,
+				name:    tt.fields.name,
+				columns: tt.fields.columns,
+				data:    tt.fields.data,
 			}
 			if got := t.buildInsertSQL(); got != tt.want {
 				t1.Errorf("buildInsertSQL() = %v, want %v", got, tt.want)
