@@ -2,6 +2,7 @@ package exceltesting_test
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,6 +26,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestExample_Load(t *testing.T) {
+	if _, err := conn.Exec("TRUNCATE company;"); err != nil {
+		t.Fatal(err)
+	}
+
 	e := exceltesting.New(conn)
 
 	e.Load(t, exceltesting.LoadRequest{
@@ -32,4 +37,39 @@ func TestExample_Load(t *testing.T) {
 		SheetPrefix:    "",
 		IgnoreSheet:    nil,
 	})
+}
+
+func TestExample_LoadRawFromCSV(t *testing.T) {
+	if _, err := conn.Exec("TRUNCATE company;"); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open(filepath.Join("testdata", "sample.csv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	cr := csv.NewReader(f)
+	rs, err := cr.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tx, err := conn.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = exceltesting.LoadRaw(tx, exceltesting.LoadRawRequest{
+		TableName: "company",
+		Columns:   rs[0],
+		Values:    rs[1:],
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tx.Rollback()
 }
