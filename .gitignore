@@ -14,8 +14,14 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# macOS
+.DS_Store
+
 # Goland
 .idea
+
+# VS Code
+.vscode
 
 # Excel temp files
 **/~$*xlsx
