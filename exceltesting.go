@@ -185,6 +185,10 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 					continue
 				}
 				if rowCnt >= 7 {
+					if len(cols) == 0 {
+						rowCnt++
+						continue
+					}
 					cols = cols[1:]
 				}
 				if err := writer.Write(cols); err != nil {
