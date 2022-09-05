@@ -272,7 +272,7 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 			}
 			_, err = os.Stat(tt.got)
 			if os.IsNotExist(err) {
-				t.Logf("%v is not found, because it is empty.\n",filepath.Base(tt.got))
+				t.Logf("%v is not found, because it is empty.\n", filepath.Base(tt.got))
 				return
 			}
 			b2, err := os.ReadFile(tt.got)
