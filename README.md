@@ -21,3 +21,9 @@ GoでExcelを使ったテーブルドリブンテストを行うためのヘル�
 
 * [データの投入方法](./doc/insert.md)
 * [DBの値と比較する方法](./doc/compare.md)
+
+## インストール
+
+```
+go get github.com/future-architect/go-exceltesting@latest
+```
