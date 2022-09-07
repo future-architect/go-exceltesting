@@ -131,9 +131,9 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 						largerSheet = want
 					}
 					if len(largerSheet) == len(want) {
-						fmt.Println("WantFileの方がレコード数が多いです。それ以外は同じです")
+						fmt.Println("WantFileの方がレコード数が多いです。")
 					} else {
-						fmt.Println("GotFileの方がレコード数が多いです。それ以外は同じです。")
+						fmt.Println("GotFileの方がレコード数が多いです。")
 					}
 				}
 				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
