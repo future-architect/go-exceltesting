@@ -102,10 +102,6 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				continue
 			}
 			got, want, err := e.comparativeSource(table, &r)
-			fmt.Println("########## GOT ###########")
-			fmt.Println(got)
-			fmt.Println("########## WANT ###########")
-			fmt.Println(want)
 
 			if err != nil {
 				t.Errorf("exceltesting: failed to fetch comparative source: %v", err)
