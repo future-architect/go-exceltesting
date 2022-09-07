@@ -102,23 +102,23 @@ func Test_exceltesing_Compare(t *testing.T) {
 		wantFile string
 		equal    bool
 	}{
-		// {
-		// 	name: "equal",
-		// 	input: func(t *testing.T) {
-		// 		t.Helper()
-		// 		tdb := openTestDB(t)
-		// 		defer tdb.Close()
-		// 		if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 		if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
-		// 			VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1),('00002','YDC',1972,current_timestamp,current_timestamp,1);`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 	},
-		// 	wantFile: filepath.Join("testdata", "compare.xlsx"),
-		// 	equal:    true,
-		// },
+		{
+			name: "equal",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := openTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
+					VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1),('00002','YDC',1972,current_timestamp,current_timestamp,1);`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile: filepath.Join("testdata", "compare.xlsx"),
+			equal:    true,
+		},
 		{
 			name: "diff",
 			input: func(t *testing.T) {
@@ -136,40 +136,40 @@ func Test_exceltesing_Compare(t *testing.T) {
 			wantFile: filepath.Join("testdata", "compare.xlsx"),
 			equal:    false,
 		},
-		// {
-		// 	name: "fewer records of results",
-		// 	input: func(t *testing.T) {
-		// 		t.Helper()
-		// 		tdb := openTestDB(t)
-		// 		defer tdb.Close()
-		// 		if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 		if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
-		// 			VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1);`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 	},
-		// 	wantFile: filepath.Join("testdata", "compare.xlsx"),
-		// 	equal:    false,
-		// },
-		// {
-		// 	name: "many records of results",
-		// 	input: func(t *testing.T) {
-		// 		t.Helper()
-		// 		tdb := openTestDB(t)
-		// 		defer tdb.Close()
-		// 		if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 		if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
-		// 			VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1),('00002','YDC',1972,current_timestamp,current_timestamp,1),('00003','FutureOne',2002,current_timestamp,current_timestamp,1);`); err != nil {
-		// 			t.Fatal(err)
-		// 		}
-		// 	},
-		// 	wantFile: filepath.Join("testdata", "compare.xlsx"),
-		// 	equal:    false,
-		// },
+		{
+			name: "fewer records of results",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := openTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
+					VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1);`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile: filepath.Join("testdata", "compare.xlsx"),
+			equal:    false,
+		},
+		{
+			name: "many records of results",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := openTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
+					VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1),('00002','YDC',1972,current_timestamp,current_timestamp,1),('00003','FutureOne',2002,current_timestamp,current_timestamp,1);`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile: filepath.Join("testdata", "compare.xlsx"),
+			equal:    false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
