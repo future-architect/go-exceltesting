@@ -116,26 +116,6 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				cmp.AllowUnexported(x{}),
 			}
 			if diff := cmp.Diff(want, got, opts...); diff != "" {
-				for i := 0; i < min(len(got), len(want)); i++ {
-					for j := 0; j < min(len(got[i]), len(want[i])); j++ {
-						if got[i][j].value != want[i][j].value {
-							fmt.Printf("Difference at Line%d, GotFile: %v, WantFile: %v\n", got[i][j].rowNumber, got[i][j].value, want[i][j].value)
-						}
-					}
-				}
-				if max(len(got), len(want)) != min(len(got), len(want)) {
-					var largerSheet [][]x
-					if max(len(got), len(want)) == len(got) {
-						largerSheet = got
-					} else {
-						largerSheet = want
-					}
-					if len(largerSheet) == len(want) {
-						fmt.Println("WantFileの方がレコード数が多いです。")
-					} else {
-						fmt.Println("GotFileの方がレコード数が多いです。")
-					}
-				}
 				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
 				equal = false
 				continue
@@ -426,12 +406,14 @@ func convert(vs [][]any, columns []string, sheetName string) [][]x {
 	resp := make([][]x, len(vs))
 	for i, r := range vs {
 		for j, v := range r {
+			sheetNumber := fmt.Sprintf("%d枚目", i+1)
+			rowNumber := fmt.Sprintf("%d行目", j+1)
 			resp[i] = append(resp[i], x{
 				column:      columns[j],
 				value:       v,
 				sheetName:   sheetName,
-				sheetNumber: i + 1,
-				rowNumber:   j + 1,
+				sheetNumber: sheetNumber,
+				rowNumber:   rowNumber,
 			})
 		}
 	}
