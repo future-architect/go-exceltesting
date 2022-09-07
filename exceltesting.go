@@ -102,12 +102,12 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				continue
 			}
 			got, want, err := e.comparativeSource(table, &r)
+
 			if err != nil {
 				t.Errorf("exceltesting: failed to fetch comparative source: %v", err)
 				equal = false
 				continue
 			}
-
 			opts := []cmp.Option{
 				cmpopts.EquateNaNs(),
 				cmp.Comparer(func(x, y *big.Int) bool {
@@ -116,6 +116,26 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				cmp.AllowUnexported(x{}),
 			}
 			if diff := cmp.Diff(want, got, opts...); diff != "" {
+				for i := 0; i < min(len(got), len(want)); i++ {
+					for j := 0; j < min(len(got[i]), len(want[i])); j++ {
+						if got[i][j].value != want[i][j].value {
+							fmt.Printf("Difference at Line%d, GotFile: %v, WantFile: %v\n", got[i][j].rowNumber, got[i][j].value, want[i][j].value)
+						}
+					}
+				}
+				if max(len(got), len(want)) != min(len(got), len(want)) {
+					var largerSheet [][]x
+					if max(len(got), len(want)) == len(got) {
+						largerSheet = got
+					} else {
+						largerSheet = want
+					}
+					if len(largerSheet) == len(want) {
+						fmt.Println("WantFileの方がレコード数が多いです。それ以外は同じです")
+					} else {
+						fmt.Println("GotFileの方がレコード数が多いです。それ以外は同じです。")
+					}
+				}
 				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
 				equal = false
 				continue
@@ -277,7 +297,7 @@ func (e *exceltesing) comparativeSource(t *table, req *CompareRequest) ([][]x, [
 		return nil, nil, err
 	}
 
-	return convert(got, cs), convert(want, cs), nil
+	return convert(got, cs, t.name), convert(want, cs, t.name), nil
 }
 
 func (e *exceltesing) insertData(t *table) error {
@@ -395,19 +415,41 @@ func getFileNameWithoutExt(path string) string {
 // x はDBの値にカラムを付与した構造体です。
 // go-cmp で結果と期待値を比較するときに、値に差分があったときにカラムも表示するために column を付与しています。
 type x struct {
-	column any
-	value  any
+	column      any
+	value       any
+	sheetName   any
+	sheetNumber any
+	rowNumber   any
 }
 
-func convert(vs [][]any, columns []string) [][]x {
+func convert(vs [][]any, columns []string, sheetName string) [][]x {
 	resp := make([][]x, len(vs))
 	for i, r := range vs {
 		for j, v := range r {
 			resp[i] = append(resp[i], x{
-				column: columns[j],
-				value:  v,
+				column:      columns[j],
+				value:       v,
+				sheetName:   sheetName,
+				sheetNumber: i + 1,
+				rowNumber:   j + 1,
 			})
 		}
 	}
 	return resp
+}
+
+func min(x int, y int) int {
+	if x <= y {
+		return x
+	} else {
+		return y
+	}
+}
+
+func max(x int, y int) int {
+	if x >= y {
+		return x
+	} else {
+		return y
+	}
 }
