@@ -170,6 +170,19 @@ func Test_exceltesing_Compare(t *testing.T) {
 			wantFile: filepath.Join("testdata", "compare.xlsx"),
 			equal:    false,
 		},
+		{
+			name: "empty database",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := openTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile: filepath.Join("testdata", "compare.xlsx"),
+			equal:    false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

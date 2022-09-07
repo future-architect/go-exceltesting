@@ -102,6 +102,10 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				continue
 			}
 			got, want, err := e.comparativeSource(table, &r)
+			fmt.Println("########## GOT ###########")
+			fmt.Println(got)
+			fmt.Println("########## WANT ###########")
+			fmt.Println(want)
 
 			if err != nil {
 				t.Errorf("exceltesting: failed to fetch comparative source: %v", err)
@@ -116,6 +120,7 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				cmp.AllowUnexported(x{}),
 			}
 			if diff := cmp.Diff(want, got, opts...); diff != "" {
+				fmt.Println(diff)
 				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
 				equal = false
 				continue
@@ -395,25 +400,22 @@ func getFileNameWithoutExt(path string) string {
 // x はDBの値にカラムを付与した構造体です。
 // go-cmp で結果と期待値を比較するときに、値に差分があったときにカラムも表示するために column を付与しています。
 type x struct {
-	column      any
-	value       any
-	sheetName   any
-	sheetNumber any
-	rowNumber   any
+	column    any
+	value     any
+	sheetName any
+	rowNumber any
 }
 
 func convert(vs [][]any, columns []string, sheetName string) [][]x {
 	resp := make([][]x, len(vs))
 	for i, r := range vs {
 		for j, v := range r {
-			sheetNumber := fmt.Sprintf("%d枚目", i+1)
-			rowNumber := fmt.Sprintf("%d行目", j+1)
+			rowNumber := fmt.Sprintf("%d行目", i+1)
 			resp[i] = append(resp[i], x{
-				column:      columns[j],
-				value:       v,
-				sheetName:   sheetName,
-				sheetNumber: sheetNumber,
-				rowNumber:   rowNumber,
+				column:    columns[j],
+				value:     v,
+				sheetName: sheetName,
+				rowNumber: rowNumber,
 			})
 		}
 	}
