@@ -419,19 +419,3 @@ func convert(vs [][]any, columns []string, sheetName string) [][]x {
 	}
 	return resp
 }
-
-func min(x int, y int) int {
-	if x <= y {
-		return x
-	} else {
-		return y
-	}
-}
-
-func max(x int, y int) int {
-	if x >= y {
-		return x
-	} else {
-		return y
-	}
-}
