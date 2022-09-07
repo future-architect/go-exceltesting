@@ -116,7 +116,6 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				cmp.AllowUnexported(x{}),
 			}
 			if diff := cmp.Diff(want, got, opts...); diff != "" {
-				fmt.Println(diff)
 				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
 				equal = false
 				continue
