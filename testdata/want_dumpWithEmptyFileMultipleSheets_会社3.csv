@@ -1,0 +1,6 @@
+会社
+company
+
+会社コード,会社名,創業年,作成日時,更新日時,リビジョン
+company_cd,company_name,founded_year,created_at,updated_at,revision
+00001,Future,1989,current_timestamp,current_timestamp,1

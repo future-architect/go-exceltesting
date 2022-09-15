@@ -159,7 +159,7 @@ func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
 			}
 
 			if len(rr) == columnsRowNum {
-				return
+				continue
 			}
 
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
