@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -243,21 +244,34 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want string
-		got  string
+		want []string
+		got  []string
 	}{
 		{
 			name: "dumped",
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dump.xlsx")}}},
-			want: filepath.Join("testdata", "want_dump_会社.csv"),
-			got:  filepath.Join("testdata", "csv", "dump_会社.csv"),
+			want: []string{filepath.Join("testdata", "want_dump_会社.csv")},
+			got:  []string{filepath.Join("testdata", "csv", "dump_会社.csv")},
 		},
-
 		{
 			name: "dumpedWithEmptyFile",
 			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpWithEmptyFile.xlsx")}}},
-			want: filepath.Join("testdata", "want_dumpWithEmptyFile_会社.csv"),
-			got:  filepath.Join("testdata", "csv", "dumpWithEmptyFile_Sheet1.csv"),
+			want: []string{filepath.Join("testdata", "want_dumpWithEmptyFile_会社.csv")},
+			got:  []string{filepath.Join("testdata", "csv", "dumpWithEmptyFile_Sheet1.csv")},
+		},
+		{
+			name: "dumpWithEmptyFileMultipleSheets",
+			args: args{r: DumpRequest{TargetBookPaths: []string{filepath.Join("testdata", "dumpWithEmptyFileMultipleSheets.xlsx")}}},
+			want: []string{
+				filepath.Join("testdata", "want_dumpWithEmptyFileMultipleSheets_会社1.csv"),
+				filepath.Join("testdata", "want_dumpWithEmptyFileMultipleSheets_会社2.csv"),
+				filepath.Join("testdata", "want_dumpWithEmptyFileMultipleSheets_会社3.csv"),
+			},
+			got: []string{
+				filepath.Join("testdata", "csv", "dumpWithEmptyFileMultipleSheets_会社1.csv"),
+				filepath.Join("testdata", "csv", "dumpWithEmptyFileMultipleSheets_会社2.csv"),
+				filepath.Join("testdata", "csv", "dumpWithEmptyFileMultipleSheets_会社3.csv"),
+			},
 		},
 	}
 
@@ -265,23 +279,30 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
-			b1, err := os.ReadFile(tt.want)
-			if err != nil {
-				t.Errorf("read file: %v", tt.want)
-				return
-			}
-			_, err = os.Stat(tt.got)
-			if os.IsNotExist(err) {
-				t.Logf("%v is not found, because it is empty.\n", filepath.Base(tt.got))
-				return
-			}
-			b2, err := os.ReadFile(tt.got)
-			if err != nil {
-				t.Errorf("read file: %v", tt.got)
-				return
-			}
-			if diff := cmp.Diff(b1, b2); diff != "" {
-				t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want, tt.got, diff)
+
+			for i := 0; i < len(tt.want); i++ {
+				b1, err := os.ReadFile(tt.want[i])
+				if err != nil {
+					t.Errorf("read file: %v", tt.want[i])
+					continue
+				}
+				_, err = os.Stat(tt.got[i])
+				if os.IsNotExist(err) {
+					if reflect.DeepEqual(b1, []byte("")) {
+						t.Logf("%v is not found, because it is empty.\n", filepath.Base(tt.got[i]))
+					} else {
+						t.Errorf("%v is not found, but it must exist.\n", filepath.Base(tt.got[i]))
+					}
+					continue
+				}
+				b2, err := os.ReadFile(tt.got[i])
+				if err != nil {
+					t.Errorf("read file: %v", tt.got[i])
+					continue
+				}
+				if diff := cmp.Diff(b1, b2); diff != "" {
+					t.Errorf("file %s and %s is mismatch (-want +got):\n%s", tt.want[i], tt.got[i], diff)
+				}
 			}
 		})
 	}
