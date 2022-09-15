@@ -280,6 +280,10 @@ func Test_exceltesing_DumpCSV(t *testing.T) {
 			e := &exceltesing{nil}
 			e.DumpCSV(t, tt.args.r)
 
+			if len(tt.want) != len(tt.got) {
+				t.Errorf("len(tt.want) must be equal to len(tt.got)")
+				return
+			}
 			for i := 0; i < len(tt.want); i++ {
 				b1, err := os.ReadFile(tt.want[i])
 				if err != nil {
