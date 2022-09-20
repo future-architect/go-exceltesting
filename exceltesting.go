@@ -59,7 +59,7 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 				t.Fatalf("exceltesing: load excel sheet, sheet = %s: %v", sheet, err)
 			}
 
-			if r.EnabledInsertZeroValueNotAppearanceColumn {
+			if r.EnableAutoCompleteNotNullColumn {
 				cs, err := e.tableColumns(table.name)
 				if err != nil {
 					t.Fatalf("exceltesing: get table(%s)'s columns: %v", table.name, err)
@@ -221,8 +221,9 @@ type LoadRequest struct {
 	SheetPrefix string
 	// 無視シート
 	IgnoreSheet []string
-	// カラムの指定がない場合にデフォルト値を投入するオプション
-	EnabledInsertZeroValueNotAppearanceColumn bool
+	// EnableAutoCompleteNotNullColumn はExcel上でカラムの指定がない場合にデフォルト値で補完します
+	// カラムにNOT NULL制約がある場合のみ補完します
+	EnableAutoCompleteNotNullColumn bool
 }
 
 // CompareRequest はExcelとデータベースの値を比較するための設定です。

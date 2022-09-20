@@ -71,10 +71,10 @@ func Test_exceltesing_Load(t *testing.T) {
 		{
 			name: "inserted excel data with default value option",
 			r: LoadRequest{
-				TargetBookPath: filepath.Join("testdata", "load.xlsx"),
-				SheetPrefix:    "option-",
-				IgnoreSheet:    nil,
-				EnabledInsertZeroValueNotAppearanceColumn: true,
+				TargetBookPath:                  filepath.Join("testdata", "load.xlsx"),
+				SheetPrefix:                     "option-",
+				IgnoreSheet:                     nil,
+				EnableAutoCompleteNotNullColumn: true,
 			},
 			want: []testX{
 				{
