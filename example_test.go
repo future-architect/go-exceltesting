@@ -33,7 +33,7 @@ func TestExample_Load(t *testing.T) {
 	e := exceltesting.New(conn)
 
 	e.Load(t, exceltesting.LoadRequest{
-		TargetBookPath: filepath.Join("testdata", "load.xlsx"),
+		TargetBookPath: filepath.Join("testdata", "load_example.xlsx"),
 		SheetPrefix:    "",
 		IgnoreSheet:    nil,
 	})

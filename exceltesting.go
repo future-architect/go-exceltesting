@@ -36,7 +36,8 @@ type exceltesing struct {
 // Load はExcelのBookを読み込み、データベースに事前データを投入します。
 func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 	t.Helper()
-	ctx := context.TODO()
+	ctx := context.Background()
+
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatalf("exceltesing: start transaction: %v", err)
@@ -56,6 +57,17 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 			table, err := e.loadExcelSheet(f, sheet)
 			if err != nil {
 				t.Fatalf("exceltesing: load excel sheet, sheet = %s: %v", sheet, err)
+			}
+
+			if r.EnableAutoCompleteNotNullColumn {
+				cs, err := e.tableColumns(table.name)
+				if err != nil {
+					t.Fatalf("exceltesing: get table(%s)'s columns: %v", table.name, err)
+				}
+				for i := range cs {
+					cs[i].data = defaultValueFromDBType(cs[i].dataType)
+				}
+				table.merge(cs)
 			}
 
 			if err := e.insertData(table); err != nil {
@@ -209,6 +221,9 @@ type LoadRequest struct {
 	SheetPrefix string
 	// 無視シート
 	IgnoreSheet []string
+	// EnableAutoCompleteNotNullColumn はExcel上でカラムの指定がない場合にデフォルト値で補完します
+	// カラムにNOT NULL制約がある場合のみ補完します
+	EnableAutoCompleteNotNullColumn bool
 }
 
 // CompareRequest はExcelとデータベースの値を比較するための設定です。
@@ -365,6 +380,34 @@ func (e *exceltesing) getComparingData(q string, len int) ([][]any, error) {
 		return nil, err
 	}
 	return got, nil
+}
+
+type dbColumn struct {
+	name     string
+	dataType string
+	data     string
+}
+
+func (e *exceltesing) tableColumns(tableName string) ([]dbColumn, error) {
+	var columns []dbColumn
+
+	rows, err := e.db.Query(getTableNotNullColumns, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c dbColumn
+		if err := rows.Scan(&c.name, &c.dataType); err != nil {
+			return nil, err
+		}
+		columns = append(columns, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return columns, nil
 }
 
 func getExcelColumns(rows [][]string, rowNum int) []string {

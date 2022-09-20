@@ -3,6 +3,7 @@ package exceltesting
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,71 +12,118 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/jackc/pgtype"
 	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func Test_exceltesing_Load(t *testing.T) {
+	jst, _ := time.LoadLocation("Asia/Tokyo")
 
 	conn := openTestDB(t)
 	t.Cleanup(func() { conn.Close() })
 
 	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
-	type args struct {
-		t *testing.T
-		r LoadRequest
-	}
-	type company struct {
-		companyCD   string
-		companyName string
-		foundedYear int
-	}
 	tests := []struct {
 		name string
-		args args
-		want []company
+		r    LoadRequest
+		want []testX
 	}{
 		{
 			name: "inserted excel data",
-			args: args{t, LoadRequest{
+			r: LoadRequest{
 				TargetBookPath: filepath.Join("testdata", "load.xlsx"),
-				SheetPrefix:    "",
+				SheetPrefix:    "normal-",
 				IgnoreSheet:    nil,
-			}},
-			want: []company{
-				{companyCD: "00001", companyName: "Future", foundedYear: 1989},
-				{companyCD: "00002", companyName: "YDC", foundedYear: 1972},
+			},
+			want: []testX{
+				{
+					ID: "test1",
+					A:  true,
+					B:  []byte("bytea"),
+					C:  "a",
+					D:  time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
+					E:  0.1,
+					F:  0.01,
+					G:  pgtype.JSON{Bytes: []uint8("{}"), Status: pgtype.Present},
+					H:  pgtype.JSONB{Bytes: []uint8("{}"), Status: pgtype.Present},
+					I:  pgtype.Inet{IPNet: &net.IPNet{IP: net.ParseIP("0.0.0.0"), Mask: net.IPv4Mask(255, 255, 255, 255)}, Status: pgtype.Present},
+					J:  32767,
+					K:  2147483647,
+					L:  9223372036854775807,
+					M:  "00:00:01",
+					N:  11111,
+					O:  0,
+					P:  "test",
+					Q:  "01:02:03",
+					S:  time.Date(2022, 1, 1, 1, 2, 3, 0, time.UTC),
+					T:  time.Date(2022, 1, 1, 1, 2, 3, 0, jst),
+					U:  "cee0db76-d69c-4ae3-ae33-5b5970adde48",
+					V:  "abc",
+					W:  1,
+					X:  1,
+					Y:  1,
+					Z:  1,
+				},
+			},
+		},
+		{
+			name: "inserted excel data with default value option",
+			r: LoadRequest{
+				TargetBookPath:                  filepath.Join("testdata", "load.xlsx"),
+				SheetPrefix:                     "option-",
+				IgnoreSheet:                     nil,
+				EnableAutoCompleteNotNullColumn: true,
+			},
+			want: []testX{
+				{
+					ID: "test-opt",
+					A:  false,
+					B:  []byte("0"),
+					C:  "x",
+					D:  time.Date(0001, 1, 1, 0, 0, 0, 0, time.UTC),
+					E:  0,
+					F:  0,
+					G:  pgtype.JSON{Bytes: []uint8("{}"), Status: pgtype.Present},
+					H:  pgtype.JSONB{Bytes: []uint8("{}"), Status: pgtype.Present},
+					I:  pgtype.Inet{IPNet: &net.IPNet{IP: net.ParseIP("0.0.0.0"), Mask: net.IPv4Mask(255, 255, 255, 255)}, Status: pgtype.Present},
+					J:  0,
+					K:  0,
+					L:  0,
+					M:  "00:00:00",
+					N:  0,
+					O:  0,
+					P:  "x",
+					Q:  "00:00:00",
+					S:  time.Date(0001, 1, 1, 0, 0, 0, 0, time.UTC),
+					T:  time.Date(0001, 1, 1, 0, 0, 0, 0, jst),
+					U:  "00000000-0000-0000-0000-000000000000",
+					V:  "x",
+					W:  1,
+					X:  1,
+					Y:  1,
+					Z:  0,
+				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := &exceltesing{db: conn}
+			e.Load(t, tt.r)
 
-			e.Load(tt.args.t, tt.args.r)
-
-			rows, err := conn.Query("SELECT company_cd, company_name, founded_year, created_at, updated_at, revision FROM company ORDER BY company_cd;")
+			got, err := getTestX(t, conn)
 			if err != nil {
-				t.Errorf("failed to query: %v", err)
-			}
-			defer rows.Close()
-			var got []company
-			for rows.Next() {
-				var companyCD, companyName string
-				var foundedYear, revision int
-				var createdAt, updatedAt time.Time
-				if err := rows.Scan(&companyCD, &companyName, &foundedYear, &createdAt, &updatedAt, &revision); err != nil {
-					t.Errorf("failed to scan: %v", err)
-				}
-				got = append(got, company{
-					companyCD:   companyCD,
-					companyName: companyName,
-					foundedYear: foundedYear,
-				})
+				t.Fatalf("failed to get test_x: %v", err)
 			}
 
-			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(company{})); diff != "" {
-				t.Errorf("got columns for table(company) mismatch (-want +got):\n%s", diff)
+			opts := []cmp.Option{
+				cmp.AllowUnexported(testX{}),
+				cmpopts.IgnoreFields(testX{}, "W", "X", "Y"), // auto increment type
+			}
+			if diff := cmp.Diff(tt.want, got, opts...); diff != "" {
+				t.Errorf("got columns for table(test_x) mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -182,6 +230,84 @@ func Test_exceltesing_Compare(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testX struct {
+	ID string
+	A  bool
+	B  []byte
+	C  string
+	D  time.Time
+	E  float32
+	F  float64
+	G  pgtype.JSON
+	H  pgtype.JSONB
+	I  pgtype.Inet
+	J  int16
+	K  int32
+	L  int64
+	M  string
+	N  float64
+	O  int64
+	P  string
+	Q  string
+	S  time.Time
+	T  time.Time
+	U  string
+	V  string
+	W  int16
+	X  int32
+	Y  int64
+	Z  int
+}
+
+func getTestX(t *testing.T, db *sql.DB) ([]testX, error) {
+	t.Helper()
+
+	rows, err := db.Query(`SELECT id, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, s, t, u, v, w, x, y, z FROM test_x ORDER BY id;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []testX
+	for rows.Next() {
+		var i testX
+		if err := rows.Scan(
+			&i.ID,
+			&i.A,
+			&i.B,
+			&i.C,
+			&i.D,
+			&i.E,
+			&i.F,
+			&i.G,
+			&i.H,
+			&i.I,
+			&i.J,
+			&i.K,
+			&i.L,
+			&i.M,
+			&i.N,
+			&i.O,
+			&i.P,
+			&i.Q,
+			&i.S,
+			&i.T,
+			&i.U,
+			&i.V,
+			&i.W,
+			&i.X,
+			&i.Y,
+			&i.Z,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func openTestDB(t *testing.T) *sql.DB {

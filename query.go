@@ -28,4 +28,24 @@ ORDER BY
 	T.relname
 ,	i.relname
 ;`
+
+	getTableNotNullColumns = `
+SELECT
+	column_name
+,	udt_name
+FROM
+	information_schema.columns
+WHERE
+	table_schema	=	CURRENT_SCHEMA()
+AND	table_name		=	$1
+AND	is_nullable		=	'NO'
+/*
+	If column_default exists, no explicit value needs to be specified.
+	For example, the automatic incremental types such as serial, bigserial, etc. are applicable.
+*/
+AND	column_default	IS	NULL
+ORDER BY
+	ordinal_position
+;
+`
 )

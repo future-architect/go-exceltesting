@@ -52,6 +52,21 @@ func (t *table) sqlColumnExp() string {
 	return strings.Join(t.columns, ",")
 }
 
+// merge は引数のカラムと値を t にマージします
+// カラムが t に存在しない場合のみマージし、t にも引数の columns にも存在する場合は t を優先してマージしません
+func (t *table) merge(columns []dbColumn) {
+	tmp := t.DeepCopy()
+	for _, dc := range columns {
+		if slices.Contains(tmp.columns, dc.name) {
+			continue
+		}
+		t.columns = append(t.columns, dc.name)
+		for i := range t.data {
+			t.data[i] = append(t.data[i], dc.data)
+		}
+	}
+}
+
 // DeepCopy generates a deep copy of table
 func (t table) DeepCopy() table {
 	var cp table = t
