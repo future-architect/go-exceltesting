@@ -2,12 +2,11 @@ package exceltesting
 
 import (
 	"database/sql"
-	"fmt"
+	"github.com/future-architect/go-exceltesting/testonly"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -20,10 +19,10 @@ import (
 func Test_exceltesing_Load(t *testing.T) {
 	jst, _ := time.LoadLocation("Asia/Tokyo")
 
-	conn := openTestDB(t)
+	conn := testonly.OpenTestDB(t)
 	t.Cleanup(func() { conn.Close() })
 
-	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
+	testonly.ExecSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
 	tests := []struct {
 		name string
@@ -130,10 +129,10 @@ func Test_exceltesing_Load(t *testing.T) {
 }
 
 func Test_exceltesing_Compare(t *testing.T) {
-	conn := openTestDB(t)
+	conn := testonly.OpenTestDB(t)
 	defer conn.Close()
 
-	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
+	testonly.ExecSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
 	// Even if there is a difference in Compare(), t.Errorf() prevents the test from failing.
 	mockT := new(testing.T)
@@ -148,7 +147,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 			name: "equal",
 			input: func(t *testing.T) {
 				t.Helper()
-				tdb := openTestDB(t)
+				tdb := testonly.OpenTestDB(t)
 				defer tdb.Close()
 				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
 					t.Fatal(err)
@@ -165,7 +164,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 			name: "diff",
 			input: func(t *testing.T) {
 				t.Helper()
-				tdb := openTestDB(t)
+				tdb := testonly.OpenTestDB(t)
 				defer tdb.Close()
 				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
 					t.Fatal(err)
@@ -182,7 +181,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 			name: "fewer records of results",
 			input: func(t *testing.T) {
 				t.Helper()
-				tdb := openTestDB(t)
+				tdb := testonly.OpenTestDB(t)
 				defer tdb.Close()
 				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
 					t.Fatal(err)
@@ -199,7 +198,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 			name: "many records of results",
 			input: func(t *testing.T) {
 				t.Helper()
-				tdb := openTestDB(t)
+				tdb := testonly.OpenTestDB(t)
 				defer tdb.Close()
 				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
 					t.Fatal(err)
@@ -308,58 +307,6 @@ func getTestX(t *testing.T, db *sql.DB) ([]testX, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-func openTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	const (
-		DBUser = "excellocal"
-		DBPass = "password"
-		DBHost = "localhost"
-		DBPort = "15432"
-		DBName = "excellocal"
-	)
-
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", DBUser, DBPass, DBHost, DBPort, DBName)
-
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
-
-	return db
-}
-
-func execSQLFile(t *testing.T, db *sql.DB, filePath string) {
-	t.Helper()
-
-	b, err := os.ReadFile(filePath)
-	if err != nil {
-		t.Fatalf("failed to read file: %v", err)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatalf("failed to start transaction: %v", err)
-	}
-	defer tx.Rollback()
-
-	queries := strings.Split(string(b), ";")
-	for _, query := range queries {
-
-		q := strings.TrimSpace(query)
-		if q == "" {
-			continue
-		}
-		if _, err = tx.Exec(q); err != nil {
-			t.Fatalf("failed to exec sql, query = %s: %v", q, err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		t.Fatalf("failed to commit: %v", err)
-	}
 }
 
 func Test_exceltesing_DumpCSV(t *testing.T) {
