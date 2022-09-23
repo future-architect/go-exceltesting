@@ -79,6 +79,10 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("exceltesing: commit: %v", err)
 	}
+
+	if r.EnableDumpCSV {
+		e.dumpCSV(t, r.TargetBookPath)
+	}
 }
 
 // Compare はExcelの期待結果と実際にデータベースに登録されているデータを比較して
@@ -134,17 +138,27 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 			}
 		}
 	}
+
+	if r.EnableDumpCSV {
+		e.dumpCSV(t, r.TargetBookPath)
+	}
 	return equal
 }
 
 // DumpCSV はExcelブックの全シートをCSVにDumpします。
 //
-// DumpRequest.TargetBookPaths で指定されたパスに csv ディレクトリを作成し、
-// csvディレクトリにDumpしたCSVファイルを作成します。
+// DumpRequest.TargetBookPaths で指定されたパスにディレクトリを作成し、
+// CSVファイルをDumpします。
+//
+// Deprecated: LoadRequest.EnableDumpCSV や CompareRequest.EnableDumpCSV のオプションを利用してください
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	e.dumpCSV(t, r.TargetBookPaths...)
+}
+
+func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 	const columnsRowNum = 9
 
-	for _, path := range r.TargetBookPaths {
+	for _, path := range paths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
 			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
@@ -224,6 +238,8 @@ type LoadRequest struct {
 	// EnableAutoCompleteNotNullColumn はExcel上でカラムの指定がない場合にデフォルト値で補完します
 	// カラムにNOT NULL制約がある場合のみ補完します
 	EnableAutoCompleteNotNullColumn bool
+	// EnableDumpCSV はExcelファイルをCSVファイルとしてDumpします
+	EnableDumpCSV bool
 }
 
 // CompareRequest はExcelとデータベースの値を比較するための設定です。
@@ -236,6 +252,8 @@ type CompareRequest struct {
 	IgnoreSheet []string
 	// 無視するカラム名
 	IgnoreColumns []string
+	// EnableDumpCSV はExcelファイルをCSVファイルとしてDumpします
+	EnableDumpCSV bool
 }
 
 // DumpRequest はExcelをCSVにDumpするための設定です。
