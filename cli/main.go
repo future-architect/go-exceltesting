@@ -15,7 +15,8 @@ var (
 
 	dumpCommand = app.Command("dump", "Generate excel template file from database")
 	dumpFile    = dumpCommand.Arg("file", "Target excel file path (e.g. dump.xlsx)").Required().NoEnvar().String()
-	tables      = dumpCommand.Arg("table", "Dump target table names (e.g. table1,table2,table3)").NoEnvar().Strings()
+	table       = dumpCommand.Flag("table", "Dump target table names (e.g. table1,table2,table3)").NoEnvar().String()
+	systemcolum = dumpCommand.Flag("systemcolum", "Specific system columns for cell style (e.g. created_at,updated_at,revision)").NoEnvar().String()
 
 	loadCommand = app.Command("load", "Load from excel file to database")
 	loadFile    = loadCommand.Arg("file", "Target excel file path (e.g. input.xlsx)").Required().NoEnvar().ExistingFile()
@@ -29,12 +30,12 @@ func Main() {
 
 	var err error
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	case dumpCommand.FullCommand():
+		err = dump(*source, *dumpFile, *table, *systemcolum)
 	case compareCommand.FullCommand():
 		err = compare(*source, *compareFile)
 	case loadCommand.FullCommand():
 		err = load(*source, *loadFile)
-	case dumpCommand.FullCommand():
-		err = dump(*source, *dumpFile, *tables)
 	}
 	if err != nil {
 		_, _ = color.New(color.FgHiRed).Fprintln(os.Stderr, err.Error())

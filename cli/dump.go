@@ -6,8 +6,11 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/exp/slices"
 	"os"
 	"os/signal"
+	"strings"
+	"unicode/utf8"
 )
 
 const DefaultColumnCnt = 32
@@ -71,9 +74,19 @@ type ColumnDef struct {
 	DefaultValue string
 }
 
-func dump(dbSource, targetFile string, tableNames []string) error {
+func dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+
+	var tableNames []string
+	if len(tableNameArg) > 0 {
+		tableNames = strings.Split(tableNameArg, ",")
+	}
+
+	var systemColumn []string
+	if len(systemColumnArg) > 0 {
+		systemColumn = strings.Split(systemColumnArg, ",")
+	}
 
 	conn, err := pgxpool.Connect(ctx, dbSource)
 	if err != nil {
@@ -108,6 +121,47 @@ func dump(dbSource, targetFile string, tableNames []string) error {
 	f := excelize.NewFile()
 	f.DeleteSheet("Sheet1")
 
+	var (
+		rowHeaderStyle, _ = f.NewStyle(&excelize.Style{
+			Border: []excelize.Border{
+				{Type: "top", Style: 1, Color: "000000"},
+				{Type: "left", Style: 1, Color: "000000"},
+				{Type: "right", Style: 1, Color: "000000"},
+				{Type: "bottom", Style: 1, Color: "000000"},
+			},
+			Fill: excelize.Fill{Type: "pattern", Color: []string{"#D9D9D9"}, Pattern: 1},
+		})
+
+		columnHeaderStyle, _ = f.NewStyle(&excelize.Style{
+			Border: []excelize.Border{
+				{Type: "top", Style: 1, Color: "#000000"},
+				{Type: "left", Style: 1, Color: "#000000"},
+				{Type: "right", Style: 1, Color: "#000000"},
+				{Type: "bottom", Style: 1, Color: "#000000"},
+			},
+			Fill: excelize.Fill{Type: "pattern", Color: []string{"#FCD5B4"}, Pattern: 1},
+		})
+
+		columnHeaderSystemStyle, _ = f.NewStyle(&excelize.Style{
+			Border: []excelize.Border{
+				{Type: "top", Style: 1, Color: "000000"},
+				{Type: "left", Style: 1, Color: "000000"},
+				{Type: "right", Style: 1, Color: "000000"},
+				{Type: "bottom", Style: 1, Color: "000000"},
+			},
+			Fill: excelize.Fill{Type: "pattern", Color: []string{"#BFBFBF"}, Pattern: 1},
+		})
+
+		rowStyle, _ = f.NewStyle(&excelize.Style{
+			Border: []excelize.Border{
+				{Type: "top", Style: 1, Color: "000000"},
+				{Type: "left", Style: 1, Color: "000000"},
+				{Type: "right", Style: 1, Color: "000000"},
+				{Type: "bottom", Style: 1, Color: "000000"},
+			},
+		})
+	)
+
 	for i, tableDef := range defs {
 		tableName := tableDef.Comment
 		index := f.NewSheet(tableName)
@@ -121,13 +175,41 @@ func dump(dbSource, targetFile string, tableNames []string) error {
 		_ = f.SetCellValue(tableName, "A8", "項目名")
 		_ = f.SetCellValue(tableName, "A9", "項目物理名")
 
+		_ = f.SetColWidth(tableName, "A", "A", 12.86)
+		_ = f.SetCellStyle(tableName, "A8", "A9", rowHeaderStyle)
+
 		for i, columnDef := range tableDef.Columns {
 			axisComment, _ := excelize.CoordinatesToCellName(2+i, 8)
 			axisName, _ := excelize.CoordinatesToCellName(2+i, 9)
 
 			_ = f.SetCellValue(tableName, axisComment, columnDef.Comment)
 			_ = f.SetCellValue(tableName, axisName, columnDef.Name)
+
+			currentCol, _ := excelize.ColumnNumberToName(2 + i)
+
+			width := utf8.RuneCountInString(columnDef.Comment) * 2
+			if width < utf8.RuneCountInString(columnDef.Name) {
+				width = utf8.RuneCountInString(columnDef.Name)
+			}
+			width += 2 //  + 2 for margin
+
+			_ = f.SetColWidth(tableName, currentCol, currentCol, float64(width))
+
+			style := columnHeaderStyle
+			if slices.Contains(systemColumn, columnDef.Name) {
+				style = columnHeaderSystemStyle
+			}
+			_ = f.SetCellStyle(tableName, axisComment, axisName, style)
+
 		}
+
+		// Add 3 empty row
+		vCell, _ := excelize.CoordinatesToCellName(1+len(tableDef.Columns), 12)
+		_ = f.SetCellStyle(tableName, "A10", vCell, rowStyle)
+		_ = f.SetCellValue(tableName, "A10", "1")
+		_ = f.SetCellValue(tableName, "A11", "2")
+		_ = f.SetCellValue(tableName, "A12", "3")
+
 	}
 
 	if err := f.SaveAs(targetFile); err != nil {
