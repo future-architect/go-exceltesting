@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -23,13 +24,13 @@ var query = `SELECT tab.relname        AS table_name
 				 , col.is_nullable
 				 , col.column_default
 			FROM pg_stat_user_tables tab
-					 INNER JOIN pg_description tabdesc
+					 LEFT OUTER JOIN pg_description tabdesc
 								ON tab.relid = tabdesc.objoid
 									AND tabdesc.objsubid = '0'
-					 INNER JOIN information_schema.columns col
+					 LEFT OUTER JOIN information_schema.columns col
 								ON tab.relname = col.table_name
 									AND tab.schemaname = current_schema()
-					 INNER JOIN pg_description coldesc
+					 LEFT OUTER JOIN pg_description coldesc
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
 			WHERE exists(select 1 FROM tmp_exceltesting_dump_table_name WHERE tab.relname = name)
@@ -46,13 +47,13 @@ var queryAll = `SELECT tab.relname        AS table_name
 				 , col.is_nullable
 				 , col.column_default
 			FROM pg_stat_user_tables tab
-					 INNER JOIN pg_description tabdesc
+					 LEFT OUTER JOIN pg_description tabdesc
 								ON tab.relid = tabdesc.objoid
 									AND tabdesc.objsubid = '0'
-					 INNER JOIN information_schema.columns col
+					 LEFT OUTER JOIN information_schema.columns col
 								ON tab.relname = col.table_name
 									AND tab.schemaname = current_schema()
-					 INNER JOIN pg_description coldesc
+					 LEFT OUTER JOIN pg_description coldesc
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
 			ORDER BY tab.relname
@@ -61,9 +62,9 @@ var queryAll = `SELECT tab.relname        AS table_name
 `
 
 type TableDef struct {
-	TableName string
-	Comment   string
-	Columns   []ColumnDef
+	Name    string
+	Comment string
+	Columns []ColumnDef
 }
 
 type ColumnDef struct {
@@ -74,7 +75,7 @@ type ColumnDef struct {
 	DefaultValue string
 }
 
-func dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) error {
+func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
@@ -114,8 +115,7 @@ func dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 	}
 
 	if len(defs) == 0 {
-		fmt.Println("table not found")
-		return nil
+		return errors.New("table not found")
 	}
 
 	f := excelize.NewFile()
@@ -163,27 +163,31 @@ func dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 	)
 
 	for i, tableDef := range defs {
-		tableName := tableDef.Comment
-		index := f.NewSheet(tableName)
+		sheetName := tableDef.Comment
+		if len(sheetName) == 0 {
+			sheetName = tableDef.Name
+		}
+
+		index := f.NewSheet(sheetName)
 
 		if i == 0 {
 			f.SetActiveSheet(index)
 		}
 
-		_ = f.SetCellValue(tableName, "A1", tableDef.Comment)
-		_ = f.SetCellValue(tableName, "A2", tableDef.TableName)
-		_ = f.SetCellValue(tableName, "A8", "項目名")
-		_ = f.SetCellValue(tableName, "A9", "項目物理名")
+		_ = f.SetCellValue(sheetName, "A1", tableDef.Comment)
+		_ = f.SetCellValue(sheetName, "A2", tableDef.Name)
+		_ = f.SetCellValue(sheetName, "A8", "項目名")
+		_ = f.SetCellValue(sheetName, "A9", "項目物理名")
 
-		_ = f.SetColWidth(tableName, "A", "A", 12.86)
-		_ = f.SetCellStyle(tableName, "A8", "A9", rowHeaderStyle)
+		_ = f.SetColWidth(sheetName, "A", "A", 12.86)
+		_ = f.SetCellStyle(sheetName, "A8", "A9", rowHeaderStyle)
 
 		for i, columnDef := range tableDef.Columns {
 			axisComment, _ := excelize.CoordinatesToCellName(2+i, 8)
 			axisName, _ := excelize.CoordinatesToCellName(2+i, 9)
 
-			_ = f.SetCellValue(tableName, axisComment, columnDef.Comment)
-			_ = f.SetCellValue(tableName, axisName, columnDef.Name)
+			_ = f.SetCellValue(sheetName, axisComment, columnDef.Comment)
+			_ = f.SetCellValue(sheetName, axisName, columnDef.Name)
 
 			currentCol, _ := excelize.ColumnNumberToName(2 + i)
 
@@ -193,22 +197,21 @@ func dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 			}
 			width += 2 //  + 2 for margin
 
-			_ = f.SetColWidth(tableName, currentCol, currentCol, float64(width))
+			_ = f.SetColWidth(sheetName, currentCol, currentCol, float64(width))
 
 			style := columnHeaderStyle
 			if slices.Contains(systemColumn, columnDef.Name) {
 				style = columnHeaderSystemStyle
 			}
-			_ = f.SetCellStyle(tableName, axisComment, axisName, style)
-
+			_ = f.SetCellStyle(sheetName, axisComment, axisName, style)
 		}
 
 		// Add 3 empty row
 		vCell, _ := excelize.CoordinatesToCellName(1+len(tableDef.Columns), 12)
-		_ = f.SetCellStyle(tableName, "A10", vCell, rowStyle)
-		_ = f.SetCellValue(tableName, "A10", "1")
-		_ = f.SetCellValue(tableName, "A11", "2")
-		_ = f.SetCellValue(tableName, "A12", "3")
+		_ = f.SetCellStyle(sheetName, "A10", vCell, rowStyle)
+		_ = f.SetCellValue(sheetName, "A10", "1")
+		_ = f.SetCellValue(sheetName, "A11", "2")
+		_ = f.SetCellValue(sheetName, "A12", "3")
 
 	}
 
@@ -238,7 +241,7 @@ func selectTabColumnDef(ctx context.Context, conn *pgxpool.Pool, tableNames []st
 	)
 
 	for rows.Next() {
-		g := make([]any, 7) // TableName, Comment, ColumnName, ColumnComment, DataType, ColumnConstraint, DefaultValue
+		g := make([]any, 7) // Name, Comment, ColumnName, ColumnComment, DataType, ColumnConstraint, DefaultValue
 		for i := range g {
 			g[i] = &g[i]
 		}
@@ -250,8 +253,8 @@ func selectTabColumnDef(ctx context.Context, conn *pgxpool.Pool, tableNames []st
 			columnDefs = make([]ColumnDef, 0, DefaultColumnCnt)
 
 			tableDefs = append(tableDefs, TableDef{
-				TableName: Str(g[0]),
-				Comment:   Str(g[1]),
+				Name:    Str(g[0]),
+				Comment: Str(g[1]),
 			})
 			currentTable = Str(g[0])
 		}

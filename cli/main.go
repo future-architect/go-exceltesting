@@ -31,11 +31,11 @@ func Main() {
 	var err error
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 	case dumpCommand.FullCommand():
-		err = dump(*source, *dumpFile, *table, *systemcolum)
+		err = Dump(*source, *dumpFile, *table, *systemcolum)
 	case compareCommand.FullCommand():
-		err = compare(*source, *compareFile)
+		err = Compare(*source, *compareFile)
 	case loadCommand.FullCommand():
-		err = load(*source, *loadFile)
+		err = Load(*source, *loadFile)
 	}
 	if err != nil {
 		_, _ = color.New(color.FgHiRed).Fprintln(os.Stderr, err.Error())

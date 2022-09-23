@@ -1,6 +1,7 @@
 package exceltesting
 
 import (
+	"github.com/future-architect/go-exceltesting/testonly"
 	"path/filepath"
 	"testing"
 
@@ -8,10 +9,10 @@ import (
 )
 
 func TestLoadRaw(t *testing.T) {
-	conn := openTestDB(t)
+	conn := testonly.OpenTestDB(t)
 	t.Cleanup(func() { conn.Close() })
 
-	execSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
+	testonly.ExecSQLFile(t, conn, filepath.Join("testdata", "schema", "ddl.sql"))
 
 	type company struct {
 		companyCD   string
