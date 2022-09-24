@@ -4,9 +4,11 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	_ "github.com/jackc/pgx/v4/pgxpool"
+	"github.com/future-architect/go-exceltesting"
 	"github.com/joho/godotenv"
 	"gopkg.in/alecthomas/kingpin.v2"
+
+	_ "github.com/jackc/pgx/v4/pgxpool"
 )
 
 var (
@@ -18,8 +20,9 @@ var (
 	table       = dumpCommand.Flag("table", "Dump target table names (e.g. table1,table2,table3)").NoEnvar().String()
 	systemcolum = dumpCommand.Flag("systemcolum", "Specific system columns for cell style (e.g. created_at,updated_at,revision)").NoEnvar().String()
 
-	loadCommand = app.Command("load", "Load from excel file to database")
-	loadFile    = loadCommand.Arg("file", "Target excel file path (e.g. input.xlsx)").Required().NoEnvar().ExistingFile()
+	loadCommand                     = app.Command("load", "Load from excel file to database")
+	loadFile                        = loadCommand.Arg("file", "Target excel file path (e.g. input.xlsx)").Required().NoEnvar().ExistingFile()
+	enableAutoCompleteNotNullColumn = loadCommand.Flag("enableAutoCompleteNotNullColumn", "Enable auto insert to not null columns if excel the cell is undefined").NoEnvar().Bool()
 
 	compareCommand = app.Command("compare", "Compare database to excel file")
 	compareFile    = compareCommand.Arg("file", "Target excel file path (e.g. want.xlsx)").Required().NoEnvar().ExistingFile()
@@ -33,9 +36,17 @@ func Main() {
 	case dumpCommand.FullCommand():
 		err = Dump(*source, *dumpFile, *table, *systemcolum)
 	case compareCommand.FullCommand():
-		err = Compare(*source, *compareFile)
+		req := exceltesting.CompareRequest{
+			TargetBookPath: *compareFile,
+			SheetPrefix:    "",
+		}
+		err = Compare(*source, req)
 	case loadCommand.FullCommand():
-		err = Load(*source, *loadFile)
+		req := exceltesting.LoadRequest{
+			TargetBookPath:                  *loadFile,
+			EnableAutoCompleteNotNullColumn: *enableAutoCompleteNotNullColumn,
+		}
+		err = Load(*source, req)
 	}
 	if err != nil {
 		_, _ = color.New(color.FgHiRed).Fprintln(os.Stderr, err.Error())
