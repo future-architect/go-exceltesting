@@ -26,7 +26,7 @@ func Test_dump(t *testing.T) {
 			args: args{
 				dbSource:        "postgres://excellocal:password@localhost:15432/excellocal",
 				targetFile:      "got1.xlsx",
-				tableNameArg:    "",
+				tableNameArg:    "company,test_x",
 				systemColumnArg: "created_at,updated_at,revision",
 			},
 			wantErr:   false,

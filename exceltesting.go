@@ -38,15 +38,21 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 	t.Helper()
 	ctx := context.Background()
 
+	if err := e.LoadWithContext(ctx, r); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+}
+
+func (e *exceltesing) LoadWithContext(ctx context.Context, r LoadRequest) error {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		t.Fatalf("exceltesing: start transaction: %v", err)
+		return fmt.Errorf("exceltesing: start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	f, err := excelize.OpenFile(r.TargetBookPath)
 	if err != nil {
-		t.Fatalf("exceltesing: excelize.OpenFile: %v", err)
+		return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
 	}
 	defer f.Close()
 	for _, sheet := range f.GetSheetList() {
@@ -56,13 +62,13 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 		if strings.HasPrefix(sheet, r.SheetPrefix) {
 			table, err := e.loadExcelSheet(f, sheet)
 			if err != nil {
-				t.Fatalf("exceltesing: load excel sheet, sheet = %s: %v", sheet, err)
+				return fmt.Errorf("exceltesing: load excel sheet, sheet = %s: %w", sheet, err)
 			}
 
 			if r.EnableAutoCompleteNotNullColumn {
 				cs, err := e.tableColumns(table.name)
 				if err != nil {
-					t.Fatalf("exceltesing: get table(%s)'s columns: %v", table.name, err)
+					return fmt.Errorf("exceltesing: get table(%s)'s columns: %w", table.name, err)
 				}
 				for i := range cs {
 					cs[i].data = defaultValueFromDBType(cs[i].dataType)
@@ -71,18 +77,22 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 			}
 
 			if err := e.insertData(table); err != nil {
-				t.Fatalf("exceltesing: insert data to %s: %v", table.name, err)
+				return fmt.Errorf("exceltesing: insert data to %s: %w", table.name, err)
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		t.Fatalf("exceltesing: commit: %v", err)
+		return fmt.Errorf("exceltesing: commit: %w", err)
 	}
 
 	if r.EnableDumpCSV {
-		e.dumpCSV(t, r.TargetBookPath)
+		if err := e.dumpBookAsCSV(r.TargetBookPath); err != nil {
+			return fmt.Errorf("dump csv: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // Compare はExcelの期待結果と実際にデータベースに登録されているデータを比較して
@@ -91,21 +101,30 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 	t.Helper()
 
+	equal, errors := e.CompareWithContext(context.Background(), r)
+	for _, err := range errors {
+		t.Error(err)
+	}
+
+	return equal
+}
+
+func (e *exceltesing) CompareWithContext(_ context.Context, r CompareRequest) (bool, []error) {
 	tx, err := e.db.Begin()
 	if err != nil {
-		t.Errorf("exceltesting: failed to start transaction: %v", err)
-		return false
+		return false, []error{fmt.Errorf("exceltesting: failed to start transaction: %w", err)}
 	}
 	defer tx.Rollback()
 
 	f, err := excelize.OpenFile(r.TargetBookPath)
 	if err != nil {
-		t.Errorf("exceltesting: failed to open excel file: %v", err)
-		return false
+		return false, []error{fmt.Errorf("exceltesting: failed to open excel file: %w", err)}
 	}
 	defer f.Close()
 
 	equal := true
+	var errs []error
+
 	for _, sheet := range f.GetSheetList() {
 		if slices.Contains(r.IgnoreSheet, sheet) {
 			continue
@@ -113,13 +132,13 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 		if strings.HasPrefix(sheet, r.SheetPrefix) {
 			table, err := e.loadExcelSheet(f, sheet)
 			if err != nil {
-				t.Errorf("exceltesting: failed to load excel sheet, sheet = %s: %v", sheet, err)
+				errs = append(errs, fmt.Errorf("exceltesting: failed to load excel sheet, sheet = %s: %v", sheet, err))
 				equal = false
 				continue
 			}
 			got, want, err := e.comparativeSource(table, &r)
 			if err != nil {
-				t.Errorf("exceltesting: failed to fetch comparative source: %v", err)
+				errs = append(errs, fmt.Errorf("exceltesting: failed to fetch comparative source: %w", err))
 				equal = false
 				continue
 			}
@@ -132,7 +151,7 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 				cmp.AllowUnexported(x{}),
 			}
 			if diff := cmp.Diff(want, got, opts...); diff != "" {
-				t.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff)
+				errs = append(errs, fmt.Errorf("table(%s) mismatch (-want +got):\n%s", table.name, diff))
 				equal = false
 				continue
 			}
@@ -140,9 +159,12 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 	}
 
 	if r.EnableDumpCSV {
-		e.dumpCSV(t, r.TargetBookPath)
+		if e.dumpBookAsCSV(r.TargetBookPath); err != nil {
+			return false, []error{fmt.Errorf("dump csv: %w", err)}
+		}
 	}
-	return equal
+
+	return equal, errs
 }
 
 // DumpCSV はExcelブックの全シートをCSVにDumpします。
@@ -152,35 +174,42 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 //
 // Deprecated: LoadRequest.EnableDumpCSV や CompareRequest.EnableDumpCSV のオプションを利用してください
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	t.Helper()
+
 	e.dumpCSV(t, r.TargetBookPaths...)
 }
 
 func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
+	t.Helper()
+
+	if err := e.dumpBookAsCSV(paths...); err != nil {
+		t.Error(err)
+	}
+}
+
+func (e *exceltesing) dumpBookAsCSV(paths ...string) error {
 	const columnsRowNum = 9
 
 	for _, path := range paths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
-			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
-			return
+			return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
 		}
 		defer ef.Close()
+
 		for _, sheet := range ef.GetSheetList() {
 			rows, err := ef.Rows(sheet)
 			if err != nil {
-				t.Errorf("exceltesing: rows: %v", err)
-				return
+				return fmt.Errorf("exceltesing: rows: %w", err)
 			}
 			rr, err := ef.GetRows(sheet)
 			if err != nil {
-				t.Errorf("exceltesing: get rows: %v", err)
-				return
+				return fmt.Errorf("exceltesing: get rows: %w", err)
 			}
 			outDir := filepath.Join(filepath.Dir(path), "csv")
 			if _, err := os.Stat(outDir); os.IsNotExist(err) {
 				if err := os.Mkdir(outDir, 0755); err != nil {
-					t.Errorf("exceltesing: create directory: %v", err)
-					return
+					return fmt.Errorf("exceltesing: create directory: %w", err)
 				}
 			}
 
@@ -191,8 +220,7 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
 			f, err := os.Create(filepath.Join(outDir, outFileName))
 			if err != nil {
-				t.Errorf("exceltesing: create file: %v", err)
-				return
+				return fmt.Errorf("exceltesing: create file: %w", err)
 			}
 			defer f.Close()
 
@@ -203,8 +231,7 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 			for rows.Next() {
 				cols, err := rows.Columns()
 				if err != nil {
-					t.Errorf("exceltesing: rows.Columns: %v", err)
-					return
+					return fmt.Errorf("exceltesing: rows.Columns: %w", err)
 				}
 				if 3 <= rowCnt && rowCnt <= 6 {
 					rowCnt++
@@ -218,13 +245,13 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 					cols = cols[1:]
 				}
 				if err := writer.Write(cols); err != nil {
-					t.Errorf("exceltesing: writer.Write(): %v", err)
-					return
+					return fmt.Errorf("exceltesing: writer.Write(): %w", err)
 				}
 				rowCnt++
 			}
 		}
 	}
+	return nil
 }
 
 // LoadRequest はExcelからデータを投入するための設定です。
@@ -343,8 +370,8 @@ func (e *exceltesing) insertData(t *table) error {
 		return nil
 	}
 
-	sql := t.buildInsertSQL()
-	_, err := e.db.ExecContext(context.TODO(), sql)
+	insertSQL := t.buildInsertSQL()
+	_, err := e.db.ExecContext(context.TODO(), insertSQL)
 	return err
 }
 
@@ -363,16 +390,16 @@ func (e *exceltesing) buildComparingQuery(t *table, primaryKey string, req *Comp
 		columns = append(columns, c)
 	}
 
-	var sql string
-	sql += "SELECT "
+	var querySQL string
+	querySQL += "SELECT "
 	for i, column := range columns {
 		if i > 0 {
-			sql += ", "
+			querySQL += ", "
 		}
-		sql += column
+		querySQL += column
 	}
-	sql += fmt.Sprintf(" FROM %s ORDER BY %s;", t.name, primaryKey)
-	return sql, columns, nil
+	querySQL += fmt.Sprintf(" FROM %s ORDER BY %s;", t.name, primaryKey)
+	return querySQL, columns, nil
 }
 
 func (e *exceltesing) getComparingData(q string, len int) ([][]any, error) {
