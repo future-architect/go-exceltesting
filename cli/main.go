@@ -23,9 +23,11 @@ var (
 	loadCommand                     = app.Command("load", "Load from excel file to database")
 	loadFile                        = loadCommand.Arg("file", "Target excel file path (e.g. input.xlsx)").Required().NoEnvar().ExistingFile()
 	enableAutoCompleteNotNullColumn = loadCommand.Flag("enableAutoCompleteNotNullColumn", "Enable auto insert to not null columns if excel the cell is undefined").NoEnvar().Bool()
+	enableDumpCSVLoad               = loadCommand.Flag("enableDumpCSV", "Enable excel file dump to csv for code review or version history").NoEnvar().Bool()
 
-	compareCommand = app.Command("compare", "Compare database to excel file")
-	compareFile    = compareCommand.Arg("file", "Target excel file path (e.g. want.xlsx)").Required().NoEnvar().ExistingFile()
+	compareCommand       = app.Command("compare", "Compare database to excel file")
+	compareFile          = compareCommand.Arg("file", "Target excel file path (e.g. want.xlsx)").Required().NoEnvar().ExistingFile()
+	enableDumpCSVCompare = loadCommand.Flag("enableDumpCSV", "Enable excel file dump to csv for code review or version history").NoEnvar().Bool()
 )
 
 func Main() {
@@ -35,18 +37,20 @@ func Main() {
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 	case dumpCommand.FullCommand():
 		err = Dump(*source, *dumpFile, *table, *systemcolum)
-	case compareCommand.FullCommand():
-		req := exceltesting.CompareRequest{
-			TargetBookPath: *compareFile,
-			SheetPrefix:    "",
-		}
-		err = Compare(*source, req)
 	case loadCommand.FullCommand():
 		req := exceltesting.LoadRequest{
 			TargetBookPath:                  *loadFile,
 			EnableAutoCompleteNotNullColumn: *enableAutoCompleteNotNullColumn,
+			EnableDumpCSV:                   *enableDumpCSVLoad,
 		}
 		err = Load(*source, req)
+	case compareCommand.FullCommand():
+		req := exceltesting.CompareRequest{
+			TargetBookPath: *compareFile,
+			SheetPrefix:    "",
+			EnableDumpCSV:  *enableDumpCSVCompare,
+		}
+		err = Compare(*source, req)
 	}
 	if err != nil {
 		_, _ = color.New(color.FgHiRed).Fprintln(os.Stderr, err.Error())

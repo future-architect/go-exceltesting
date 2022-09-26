@@ -41,10 +41,6 @@ func (e *exceltesing) Load(t *testing.T, r LoadRequest) {
 	if err := e.LoadWithContext(ctx, r); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-
-	if r.EnableDumpCSV {
-		e.dumpCSV(t, r.TargetBookPath)
-	}
 }
 
 func (e *exceltesing) LoadWithContext(ctx context.Context, r LoadRequest) error {
@@ -90,6 +86,12 @@ func (e *exceltesing) LoadWithContext(ctx context.Context, r LoadRequest) error 
 		return fmt.Errorf("exceltesing: commit: %w", err)
 	}
 
+	if r.EnableDumpCSV {
+		if err := e.dumpBookAsCSV(r.TargetBookPath); err != nil {
+			return fmt.Errorf("dump csv: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -104,9 +106,6 @@ func (e *exceltesing) Compare(t *testing.T, r CompareRequest) bool {
 		t.Error(err)
 	}
 
-	if r.EnableDumpCSV {
-		e.dumpCSV(t, r.TargetBookPath)
-	}
 	return equal
 }
 
@@ -159,6 +158,12 @@ func (e *exceltesing) CompareWithContext(_ context.Context, r CompareRequest) (b
 		}
 	}
 
+	if r.EnableDumpCSV {
+		if e.dumpBookAsCSV(r.TargetBookPath); err != nil {
+			return false, []error{fmt.Errorf("dump csv: %w", err)}
+		}
+	}
+
 	return equal, errs
 }
 
@@ -169,35 +174,42 @@ func (e *exceltesing) CompareWithContext(_ context.Context, r CompareRequest) (b
 //
 // Deprecated: LoadRequest.EnableDumpCSV や CompareRequest.EnableDumpCSV のオプションを利用してください
 func (e *exceltesing) DumpCSV(t *testing.T, r DumpRequest) {
+	t.Helper()
+
 	e.dumpCSV(t, r.TargetBookPaths...)
 }
 
 func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
+	t.Helper()
+
+	if err := e.dumpBookAsCSV(paths...); err != nil {
+		t.Error(err)
+	}
+}
+
+func (e *exceltesing) dumpBookAsCSV(paths ...string) error {
 	const columnsRowNum = 9
 
 	for _, path := range paths {
 		ef, err := excelize.OpenFile(path)
 		if err != nil {
-			t.Errorf("exceltesing: excelize.OpenFile: %v", err)
-			return
+			return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
 		}
 		defer ef.Close()
+
 		for _, sheet := range ef.GetSheetList() {
 			rows, err := ef.Rows(sheet)
 			if err != nil {
-				t.Errorf("exceltesing: rows: %v", err)
-				return
+				return fmt.Errorf("exceltesing: rows: %w", err)
 			}
 			rr, err := ef.GetRows(sheet)
 			if err != nil {
-				t.Errorf("exceltesing: get rows: %v", err)
-				return
+				return fmt.Errorf("exceltesing: get rows: %w", err)
 			}
 			outDir := filepath.Join(filepath.Dir(path), "csv")
 			if _, err := os.Stat(outDir); os.IsNotExist(err) {
 				if err := os.Mkdir(outDir, 0755); err != nil {
-					t.Errorf("exceltesing: create directory: %v", err)
-					return
+					return fmt.Errorf("exceltesing: create directory: %w", err)
 				}
 			}
 
@@ -208,8 +220,7 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 			outFileName := fmt.Sprintf("%s_%s.csv", getFileNameWithoutExt(path), sheet)
 			f, err := os.Create(filepath.Join(outDir, outFileName))
 			if err != nil {
-				t.Errorf("exceltesing: create file: %v", err)
-				return
+				return fmt.Errorf("exceltesing: create file: %w", err)
 			}
 			defer f.Close()
 
@@ -220,8 +231,7 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 			for rows.Next() {
 				cols, err := rows.Columns()
 				if err != nil {
-					t.Errorf("exceltesing: rows.Columns: %v", err)
-					return
+					return fmt.Errorf("exceltesing: rows.Columns: %w", err)
 				}
 				if 3 <= rowCnt && rowCnt <= 6 {
 					rowCnt++
@@ -235,13 +245,13 @@ func (e *exceltesing) dumpCSV(t *testing.T, paths ...string) {
 					cols = cols[1:]
 				}
 				if err := writer.Write(cols); err != nil {
-					t.Errorf("exceltesing: writer.Write(): %v", err)
-					return
+					return fmt.Errorf("exceltesing: writer.Write(): %w", err)
 				}
 				rowCnt++
 			}
 		}
 	}
+	return nil
 }
 
 // LoadRequest はExcelからデータを投入するための設定です。

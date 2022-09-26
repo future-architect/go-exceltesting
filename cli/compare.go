@@ -14,9 +14,6 @@ import (
 )
 
 func Compare(dbSource string, r exceltesting.CompareRequest) error {
-	if r.EnableDumpCSV {
-		return fmt.Errorf("unsupporetd option: EnableDumpCSV")
-	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

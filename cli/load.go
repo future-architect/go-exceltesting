@@ -27,9 +27,5 @@ func Load(dbSource string, r exceltesting.LoadRequest) error {
 		return fmt.Errorf("load: %w", err)
 	}
 
-	if r.EnableDumpCSV {
-		return fmt.Errorf("unsupporetd option: EnableDumpCSV")
-	}
-
 	return nil
 }
