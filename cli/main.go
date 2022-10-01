@@ -27,7 +27,7 @@ var (
 
 	compareCommand       = app.Command("compare", "Compare database to excel file")
 	compareFile          = compareCommand.Arg("file", "Target excel file path (e.g. want.xlsx)").Required().NoEnvar().ExistingFile()
-	enableDumpCSVCompare = loadCommand.Flag("enableDumpCSV", "Enable excel file dump to csv for code review or version history").NoEnvar().Bool()
+	enableDumpCSVCompare = compareCommand.Flag("enableDumpCSV", "Enable excel file dump to csv for code review or version history").NoEnvar().Bool()
 )
 
 func Main() {

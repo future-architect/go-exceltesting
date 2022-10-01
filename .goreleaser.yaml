@@ -7,7 +7,8 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 builds:
-  - env:
+  - main: ./cmd/exceltesting/
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -29,7 +30,8 @@ changelog:
   filters:
     exclude:
       - '^docs:'
-      - '^test:'
+      - '^testdata:'
+      - '^testonly:'
 
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
