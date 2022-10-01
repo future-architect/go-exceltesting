@@ -11,10 +11,13 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
 const DefaultColumnCnt = 32
+
+var DumpWithDataRowLimit = 10
 
 var query = `SELECT tab.relname        AS table_name
 				 , tabdesc.description AS table_description
@@ -205,6 +208,11 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 			_ = f.SetCellStyle(sheetName, axisComment, axisName, style)
 		}
 
+		records, err := selectExistsRecords(ctx, conn, tableDef)
+		if err != nil {
+			return fmt.Errorf("select exists records: %w", err)
+		}
+
 		// Add 3 empty row
 		vCell, _ := excelize.CoordinatesToCellName(1+len(tableDef.Columns), 12)
 		_ = f.SetCellStyle(sheetName, "A10", vCell, rowStyle)
@@ -212,6 +220,26 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 		_ = f.SetCellValue(sheetName, "A11", "2")
 		_ = f.SetCellValue(sheetName, "A12", "3")
 
+		// データレコードがあれば上書き
+		if len(records) > 0 {
+
+			// 枠線などのスタイルを設定
+			vCell, _ := excelize.CoordinatesToCellName(len(records[0])+1, len(records)+9) // 9 is data record start position
+			_ = f.SetCellStyle(sheetName, "A10", vCell, rowStyle)
+
+			for i, record := range records {
+				rowNum := 10 + i
+
+				vCell, _ := excelize.CoordinatesToCellName(1, rowNum)
+				_ = f.SetCellValue(sheetName, vCell, fmt.Sprint(i+1))
+
+				for j, cell := range record {
+					colNum := j + 2
+					vCell, _ := excelize.CoordinatesToCellName(colNum, rowNum)
+					_ = f.SetCellValue(sheetName, vCell, fmtCell(cell))
+				}
+			}
+		}
 	}
 
 	f.DeleteSheet("Sheet1")
@@ -282,4 +310,40 @@ func Str(a any) string {
 		return ""
 	}
 	return a.(string)
+}
+
+func selectExistsRecords(ctx context.Context, conn *pgxpool.Pool, tableDef TableDef) ([][]any, error) {
+	rows, err := conn.Query(ctx, fmt.Sprintf(`select * from %s limit %d`, tableDef.Name, DumpWithDataRowLimit))
+	if err != nil {
+		return nil, fmt.Errorf("db access: %w", err)
+	}
+	defer rows.Close()
+
+	dataRecords := make([][]any, 0, DumpWithDataRowLimit)
+
+	for rows.Next() {
+		g := make([]any, len(tableDef.Columns))
+		for i := range g {
+			g[i] = &g[i]
+		}
+		if err := rows.Scan(g...); err != nil {
+			return nil, err
+		}
+
+		dataRecords = append(dataRecords, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return dataRecords, nil
+}
+
+func fmtCell(a any) string {
+	switch v := a.(type) {
+	case time.Time:
+		return v.Format("2006-01-02 15:04:05")
+	default:
+		return fmt.Sprint(v)
+	}
 }
