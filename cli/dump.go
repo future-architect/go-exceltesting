@@ -119,7 +119,6 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 	}
 
 	f := excelize.NewFile()
-	f.DeleteSheet("Sheet1")
 
 	var (
 		rowHeaderStyle, _ = f.NewStyle(&excelize.Style{
@@ -214,6 +213,8 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 		_ = f.SetCellValue(sheetName, "A12", "3")
 
 	}
+
+	f.DeleteSheet("Sheet1")
 
 	if err := f.SaveAs(targetFile); err != nil {
 		return fmt.Errorf("dump result save: %w", err)
