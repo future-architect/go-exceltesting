@@ -28,3 +28,5 @@
 
 # test file
 testdata/csv/*.csv
+
+dist/
