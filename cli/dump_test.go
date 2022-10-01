@@ -30,7 +30,7 @@ func Test_dump(t *testing.T) {
 				systemColumnArg: "created_at,updated_at,revision",
 			},
 			wantErr:   false,
-			wantSheet: []string{"Sheet1", "company", "test_x"},
+			wantSheet: []string{"company", "test_x"},
 		},
 	}
 
