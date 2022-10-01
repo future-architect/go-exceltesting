@@ -27,3 +27,46 @@ GoでExcelを使ったテーブルドリブンテストを行うためのヘル�
 ```
 go get github.com/future-architect/go-exceltesting@latest
 ```
+
+## CLI インターフェース
+
+テストに用いるExcelテンプレートの生成や、比較などをCLIコマンド経由で生成、確認できます。
+
+### Install
+
+```sh
+go install github.com/future-architect/go-exceltesting/cmd/exceltesting@latest
+```
+
+### Setup
+
+This cli tool needs to connect database. Accept connection url by `-c` option or environment variables.
+
+```sh
+# Mac/Linux
+export EXCELTESTING_CONNECTION=postgres://username:password@localhost:5432/postgres?sslmode=disable
+
+# Windows
+set EXCELTESTING_CONNECTION=postgres://username:password@localhost:5432/postgres?sslmode=disable
+```
+
+### Example
+
+Generate excel template file.
+
+```sh
+$ exceltesting dump out.xlsx
+```
+
+Compare Database and excel file.
+
+```sh
+$ exceltesting compare testdata/compare.xlsx
+```
+
+Load test data.
+
+```sh
+$ exceltesting load testdata/load.xlsx
+```
+
