@@ -13,14 +13,14 @@ GoでExcelを使ったテーブルドリブンテストを行うためのヘル�
 `go-exceltesting` ではこうしたデータベースへの事前データの投入や、実際の更新結果と期待結果の比較をより効率的に行うためのAPIを提供します。
 視認性に優れることから事前データや期待するデータはExcelを使います。
 
-![](./doc/image/overview.drawio.png)
+![](docs/image/overview.drawio.png)
 
 現在は PostgreSQL のみサポートしています。
 
 ## 使い方
 
-* [データの投入方法](./doc/insert.md)
-* [DBの値と比較する方法](./doc/compare.md)
+* [データの投入方法](docs/insert.md)
+* [DBの値と比較する方法](docs/compare.md)
 
 ## インストール
 
