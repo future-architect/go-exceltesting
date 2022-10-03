@@ -11,8 +11,10 @@ import (
 	_ "github.com/jackc/pgx/v4/pgxpool"
 )
 
+var Version = "0.6.0"
+
 var (
-	app    = kingpin.New("exceltesting", "Excel file driven testing helper tool")
+	app    = kingpin.New("exceltesting", "Excel file driven testing helper tool").Version(Version)
 	source = app.Flag("source", `Database source (e.g. postgres://user:pass@host/dbname?sslmode=disable). EXCELTESTING_CONNECTION envvar is acceptable.`).Short('c').Envar("EXCELTESTING_CONNECTION").String()
 
 	dumpCommand = app.Command("dump", "Generate excel template file from database")
@@ -32,6 +34,8 @@ var (
 
 func Main() {
 	_ = godotenv.Load(".env.local", ".env")
+
+	app.HelpFlag.Short('h')
 
 	var err error
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
