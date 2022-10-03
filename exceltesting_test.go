@@ -199,6 +199,23 @@ func Test_exceltesing_Compare(t *testing.T) {
 			equal:    true,
 		},
 		{
+			name: "equal on exceltesing version 2.0 sheet",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := testonly.OpenTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE company;`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tdb.Exec(`INSERT INTO company (company_cd,company_name,founded_year,created_at,updated_at,revision)
+					VALUES ('00001','Future',1989,current_timestamp,current_timestamp,1),('00002','YDC',1972,current_timestamp,current_timestamp,1);`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile: filepath.Join("testdata", "compare_v2.xlsx"),
+			equal:    true,
+		},
+		{
 			name: "diff",
 			input: func(t *testing.T) {
 				t.Helper()
