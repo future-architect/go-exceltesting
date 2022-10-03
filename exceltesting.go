@@ -55,6 +55,7 @@ func (e *exceltesing) LoadWithContext(ctx context.Context, r LoadRequest) error 
 		return fmt.Errorf("exceltesing: excelize.OpenFile: %w", err)
 	}
 	defer f.Close()
+
 	for _, sheet := range f.GetSheetList() {
 		if slices.Contains(r.IgnoreSheet, sheet) {
 			continue
@@ -290,8 +291,15 @@ type DumpRequest struct {
 }
 
 func (e *exceltesing) loadExcelSheet(f *excelize.File, targetSheet string) (*table, error) {
-	const tableNmCell = "A2"
-	const columnDefineRowNum = 9
+	var (
+		tableNmCell        = "A2"
+		columnDefineRowNum = 9
+	)
+
+	formatVersion := extractSheetFormatVersion(f, targetSheet)
+	if formatVersion == "2.0" {
+		columnDefineRowNum = 6
+	}
 
 	tableNm, err := f.GetCellValue(targetSheet, tableNmCell)
 	if err != nil {
@@ -519,4 +527,32 @@ func convert(vs [][]any, columns []string) [][]x {
 		}
 	}
 	return resp
+}
+
+// extractSheetFormatVersion is extracting exceltesting sheet format version.
+// default 1.0
+func extractSheetFormatVersion(f *excelize.File, sheet string) string {
+	index := f.GetSheetIndex(sheet)
+	if index == -1 {
+		return "1.0"
+	}
+
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		return "1.0"
+	}
+	if len(rows) < 3 {
+		return "1.0"
+	}
+
+	row := rows[2] // 3行目に記載があるとする
+	if len(row) < 2 {
+		return "1.0"
+	}
+
+	if strings.TrimSpace(strings.ToLower(row[0])) == "version" {
+		return strings.TrimSpace(row[1])
+	}
+
+	return "1.0"
 }
