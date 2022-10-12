@@ -16,7 +16,7 @@ AND	i.oid			=	ix.indexrelid
 AND	ix.indisprimary	=	TRUE
 AND	A.attrelid		=	T.oid
 AND	A.attnum		=	ANY(ix.indkey)
-AND	T.relkind		=	'r'
+AND	T.relkind		IN	('r', 'p') -- TODO: 将来的には他の relkind にも対応する予定
 AND	T.relname		=	ta.tablename
 AND	ta.schemaname	=	CURRENT_SCHEMA()
 AND	T.relname		=	$1

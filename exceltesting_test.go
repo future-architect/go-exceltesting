@@ -2,13 +2,14 @@ package exceltesting
 
 import (
 	"database/sql"
-	"github.com/future-architect/go-exceltesting/testonly"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/future-architect/go-exceltesting/testonly"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -176,10 +177,11 @@ func Test_exceltesing_Compare(t *testing.T) {
 	mockT := new(testing.T)
 
 	tests := []struct {
-		name     string
-		input    func(t *testing.T)
-		wantFile string
-		equal    bool
+		name      string
+		input     func(t *testing.T)
+		wantFile  string
+		wantSheet string
+		equal     bool
 	}{
 		{
 			name: "equal",
@@ -195,8 +197,9 @@ func Test_exceltesing_Compare(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			wantFile: filepath.Join("testdata", "compare.xlsx"),
-			equal:    true,
+			wantFile:  filepath.Join("testdata", "compare.xlsx"),
+			wantSheet: "会社",
+			equal:     true,
 		},
 		{
 			name: "equal on exceltesing version 2.0 sheet",
@@ -212,8 +215,9 @@ func Test_exceltesing_Compare(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			wantFile: filepath.Join("testdata", "compare_v2.xlsx"),
-			equal:    true,
+			wantFile:  filepath.Join("testdata", "compare_v2.xlsx"),
+			wantSheet: "会社",
+			equal:     true,
 		},
 		{
 			name: "diff",
@@ -229,8 +233,9 @@ func Test_exceltesing_Compare(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			wantFile: filepath.Join("testdata", "compare.xlsx"),
-			equal:    false,
+			wantFile:  filepath.Join("testdata", "compare.xlsx"),
+			wantSheet: "会社",
+			equal:     false,
 		},
 		{
 			name: "fewer records of results",
@@ -246,8 +251,9 @@ func Test_exceltesing_Compare(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			wantFile: filepath.Join("testdata", "compare.xlsx"),
-			equal:    false,
+			wantFile:  filepath.Join("testdata", "compare.xlsx"),
+			wantSheet: "会社",
+			equal:     false,
 		},
 		{
 			name: "many records of results",
@@ -263,8 +269,27 @@ func Test_exceltesing_Compare(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			wantFile: filepath.Join("testdata", "compare.xlsx"),
-			equal:    false,
+			wantFile:  filepath.Join("testdata", "compare.xlsx"),
+			wantSheet: "会社",
+			equal:     false,
+		},
+		{
+			name: "partition table",
+			input: func(t *testing.T) {
+				t.Helper()
+				tdb := testonly.OpenTestDB(t)
+				defer tdb.Close()
+				if _, err := tdb.Exec(`TRUNCATE temperature;`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tdb.Exec(`INSERT INTO temperature (ymd,value)
+						VALUES ('20210228',-2.0),('20210831',38.5);`); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantFile:  filepath.Join("testdata", "compare.xlsx"),
+			wantSheet: "気温",
+			equal:     true,
 		},
 	}
 	for _, tt := range tests {
@@ -274,7 +299,7 @@ func Test_exceltesing_Compare(t *testing.T) {
 			e := New(conn)
 			got := e.Compare(mockT, CompareRequest{
 				TargetBookPath: filepath.Join("testdata", "compare.xlsx"),
-				SheetPrefix:    "",
+				SheetPrefix:    tt.wantSheet,
 				IgnoreSheet:    nil,
 				IgnoreColumns:  []string{"created_at", "updated_at"},
 			})

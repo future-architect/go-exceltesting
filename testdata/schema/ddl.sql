@@ -43,3 +43,16 @@ CREATE TABLE test_x(
     CONSTRAINT test_x_pkc PRIMARY KEY(id)
 )
 ;
+
+DROP TABLE IF EXISTS temperature
+;
+CREATE TABLE temperature(
+    ymd varchar(8) NOT NULL,
+    value numeric(4,1) NOT NULL,
+    CONSTRAINT temperature_pkc PRIMARY KEY(ymd)
+) PARTITION BY RANGE (ymd)
+;
+DROP TABLE IF EXISTS temperature_2021_2022
+;
+CREATE TABLE temperature_2021_2022 PARTITION OF temperature FOR VALUES FROM ('20210101') TO ('20220101')
+;
