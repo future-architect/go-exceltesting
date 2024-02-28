@@ -184,15 +184,17 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 
 		_ = f.SetCellValue(sheetName, "A1", tableDef.Comment)
 		_ = f.SetCellValue(sheetName, "A2", tableDef.Name)
-		_ = f.SetCellValue(sheetName, "A8", "項目名")
-		_ = f.SetCellValue(sheetName, "A9", "項目物理名")
+		_ = f.SetCellValue(sheetName, "A3", "version")
+		_ = f.SetCellValue(sheetName, "B3", "2.0")
+		_ = f.SetCellValue(sheetName, "A5", "項目名")
+		_ = f.SetCellValue(sheetName, "A6", "項目物理名")
 
 		_ = f.SetColWidth(sheetName, "A", "A", 12.86)
-		_ = f.SetCellStyle(sheetName, "A8", "A9", rowHeaderStyle)
+		_ = f.SetCellStyle(sheetName, "A5", "A6", rowHeaderStyle)
 
 		for i, columnDef := range tableDef.Columns {
-			axisComment, _ := excelize.CoordinatesToCellName(2+i, 8)
-			axisName, _ := excelize.CoordinatesToCellName(2+i, 9)
+			axisComment, _ := excelize.CoordinatesToCellName(2+i, 5)
+			axisName, _ := excelize.CoordinatesToCellName(2+i, 6)
 
 			_ = f.SetCellValue(sheetName, axisComment, columnDef.Comment)
 			_ = f.SetCellValue(sheetName, axisName, columnDef.Name)
@@ -221,10 +223,10 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 
 		// Add 3 empty row
 		vCell, _ := excelize.CoordinatesToCellName(1+len(tableDef.Columns), 12)
-		_ = f.SetCellStyle(sheetName, "A10", vCell, rowStyle)
-		_ = f.SetCellValue(sheetName, "A10", "1")
-		_ = f.SetCellValue(sheetName, "A11", "2")
-		_ = f.SetCellValue(sheetName, "A12", "3")
+		_ = f.SetCellStyle(sheetName, "A7", vCell, rowStyle)
+		_ = f.SetCellValue(sheetName, "A7", "1")
+		_ = f.SetCellValue(sheetName, "A8", "2")
+		_ = f.SetCellValue(sheetName, "A9", "3")
 
 		// データレコードがあれば上書き
 		if len(records) > 0 {
@@ -234,7 +236,7 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 			_ = f.SetCellStyle(sheetName, "A10", vCell, rowStyle)
 
 			for i, record := range records {
-				rowNum := 10 + i
+				rowNum := 7 + i
 
 				vCell, _ := excelize.CoordinatesToCellName(1, rowNum)
 				_ = f.SetCellValue(sheetName, vCell, fmt.Sprint(i+1))

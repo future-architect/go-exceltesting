@@ -160,7 +160,7 @@ func (e *exceltesing) CompareWithContext(_ context.Context, r CompareRequest) (b
 	}
 
 	if r.EnableDumpCSV {
-		if e.dumpBookAsCSV(r.TargetBookPath); err != nil {
+		if err := e.dumpBookAsCSV(r.TargetBookPath); err != nil {
 			return false, []error{fmt.Errorf("dump csv: %w", err)}
 		}
 	}
