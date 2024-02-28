@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/xuri/excelize/v2"
@@ -37,6 +38,8 @@ var query = `SELECT tab.relname        AS table_name
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
 			WHERE exists(select 1 FROM tmp_exceltesting_dump_table_name WHERE tab.relname = name)
+				AND	tab.schemaname = current_schema()
+				AND col.table_schema = current_schema()
 			ORDER BY tab.relname
 				   , col.ordinal_position
 			;
@@ -59,6 +62,9 @@ var queryAll = `SELECT tab.relname        AS table_name
 					 LEFT OUTER JOIN pg_description coldesc
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
+			WHERE
+					tab.schemaname = current_schema()
+				AND col.table_schema = current_schema()
 			ORDER BY tab.relname
 				   , col.ordinal_position
 			;
@@ -343,6 +349,12 @@ func fmtCell(a any) string {
 	switch v := a.(type) {
 	case time.Time:
 		return v.Format("2006-01-02 15:04:05")
+	case pgtype.Numeric:
+		var s string
+		if err := v.AssignTo(&s); err != nil {
+			return fmt.Sprintf("%v (fmtCell): %v", v, err)
+		}
+		return s
 	default:
 		return fmt.Sprint(v)
 	}
