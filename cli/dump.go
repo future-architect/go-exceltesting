@@ -37,9 +37,12 @@ var query = `SELECT tab.relname        AS table_name
 					 LEFT OUTER JOIN pg_description coldesc
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
+			         LEFT OUTER JOIN pg_class pc
+                        ON tab.relid = pc.oid
 			WHERE exists(select 1 FROM tmp_exceltesting_dump_table_name WHERE tab.relname = name)
 				AND	tab.schemaname = current_schema()
 				AND col.table_schema = current_schema()
+				AND pc.relispartition = false
 			ORDER BY tab.relname
 				   , col.ordinal_position
 			;
@@ -62,9 +65,12 @@ var queryAll = `SELECT tab.relname        AS table_name
 					 LEFT OUTER JOIN pg_description coldesc
 								ON tab.relid = coldesc.objoid
 									AND col.ordinal_position = coldesc.objsubid
+			         LEFT OUTER JOIN pg_class pc
+                        ON tab.relid = pc.oid
 			WHERE
 					tab.schemaname = current_schema()
 				AND col.table_schema = current_schema()
+			    AND pc.relispartition = false
 			ORDER BY tab.relname
 				   , col.ordinal_position
 			;
