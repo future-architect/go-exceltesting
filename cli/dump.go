@@ -18,8 +18,6 @@ import (
 
 const DefaultColumnCnt = 32
 
-var DumpWithDataRowLimit = 10
-
 var query = `SELECT tab.relname        AS table_name
 				 , tabdesc.description AS table_description
 				 , col.column_name
@@ -90,7 +88,7 @@ type ColumnDef struct {
 	DefaultValue string
 }
 
-func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) error {
+func Dump(dbSource, targetFile, tableNameArg, systemColumnArg string, maxDumpSize int) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
@@ -222,7 +220,7 @@ func Dump(dbSource, targetFile string, tableNameArg, systemColumnArg string) err
 			_ = f.SetCellStyle(sheetName, axisComment, axisName, style)
 		}
 
-		records, err := selectExistsRecords(ctx, conn, tableDef)
+		records, err := selectExistsRecords(ctx, conn, tableDef, maxDumpSize)
 		if err != nil {
 			return fmt.Errorf("select exists records: %w", err)
 		}
@@ -326,14 +324,14 @@ func Str(a any) string {
 	return a.(string)
 }
 
-func selectExistsRecords(ctx context.Context, conn *pgxpool.Pool, tableDef TableDef) ([][]any, error) {
-	rows, err := conn.Query(ctx, fmt.Sprintf(`select * from %s limit %d`, tableDef.Name, DumpWithDataRowLimit))
+func selectExistsRecords(ctx context.Context, conn *pgxpool.Pool, tableDef TableDef, maxDumpSize int) ([][]any, error) {
+	rows, err := conn.Query(ctx, fmt.Sprintf(`select * from %s limit %d`, tableDef.Name, maxDumpSize))
 	if err != nil {
 		return nil, fmt.Errorf("db access: %w", err)
 	}
 	defer rows.Close()
 
-	dataRecords := make([][]any, 0, DumpWithDataRowLimit)
+	dataRecords := make([][]any, 0, maxDumpSize)
 
 	for rows.Next() {
 		g := make([]any, len(tableDef.Columns))
