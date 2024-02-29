@@ -42,7 +42,7 @@ func Test_dump(t *testing.T) {
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
-			if err := Dump(tt.args.dbSource, tt.args.targetFile, tt.args.tableNameArg, tt.args.systemColumnArg); (err != nil) != tt.wantErr {
+			if err := Dump(tt.args.dbSource, tt.args.targetFile, tt.args.tableNameArg, tt.args.systemColumnArg, 10); (err != nil) != tt.wantErr {
 				t.Errorf("dump() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

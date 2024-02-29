@@ -30,3 +30,5 @@
 testdata/csv/*.csv
 
 dist/
+
+*.xlsx
